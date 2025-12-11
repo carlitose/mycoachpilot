@@ -1,6 +1,8 @@
-# Copilot Realtime Interview
+# MyCoachPilot Free
 
-An AI-powered real-time voice coaching assistant built with Next.js and OpenAI's Realtime API. This application enables ultra-low latency voice conversations using WebRTC technology.
+An open source AI-powered real-time voice coaching assistant built with Next.js and OpenAI's Realtime API. This application enables ultra-low latency voice conversations using WebRTC technology.
+
+This is the open source version of [mycoachpilot.com](https://mycoachpilot.com).
 
 ## Hosted Version
 
@@ -136,4 +138,6 @@ The main UI component that orchestrates:
 
 ## License
 
-This project is private and proprietary.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+You are free to use, modify, and distribute this software for personal and non-commercial purposes. For commercial use, please contact us.
