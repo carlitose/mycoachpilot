@@ -1,0 +1,46 @@
+# Copilot Realtime Interview
+
+> AI-powered real-time voice assistant for interviews and conversations - uses your own OpenAI API key.
+
+## Overview
+Open source web application that provides real-time AI voice assistance through audio transcription and intelligent responses powered by OpenAI Realtime API.
+
+## Core Features
+- [Home](/) - Real-time AI voice assistant
+- [Dashboard](/dashboard) - Voice assistance control center
+- [AI Settings](/app/settings/ai) - Configure templates and customize AI behavior
+
+## Key Benefits
+- **Pre-Built Templates**: General Assistant, Technical Interview, Meeting Notes, Education, Customer Support, Content Creation
+- **Silent Mode**: Mute bot voice, read text responses - use discreetly anywhere
+- **Real-time Transcription**: High accuracy, even with specialized terminology
+- **Instant AI Responses**: OpenAI Realtime API powered intelligence
+- **Custom Templates**: Create templates for any specific workflow
+- **Screen Capture**: Capture important visuals for later reference
+- **Web App**: Works alongside any platform, no installation needed
+- **Bring Your Own Key**: Uses your own OpenAI API key
+
+## Technical Stack
+- **Frontend**: Next.js 15, TypeScript, React 18
+- **AI Models**: OpenAI Realtime API
+- **Styling**: Tailwind CSS, DaisyUI
+
+## Use Cases & Templates
+- **General Assistant**: Default multi-purpose voice assistance
+- **Technical Interview**: Coding and system design help
+- **Meeting Notes**: Real-time transcription and action items
+- **Education & Learning**: Tutoring and explanations
+- **Customer Support**: Call assistance and response suggestions
+- **Content Creation**: Writing and brainstorming assistance
+- **Custom Templates**: Create your own for any workflow
+
+## Privacy & Security
+- **No Audio Recording**: Audio is processed in real-time and immediately discarded
+- **Local Configuration**: All settings stored locally in your browser
+- **Your Own API Key**: Data goes directly to OpenAI, not through our servers
+
+## Source Code
+- GitHub: https://github.com/carlitose/copilot_real_time_interview
+
+## Last Updated
+2025-12-11

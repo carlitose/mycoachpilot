@@ -1,0 +1,50 @@
+# Robots.txt per mycoachpilot.com
+# Consente l'accesso ai principali bot di AI e motori di ricerca
+
+# OpenAI ChatGPT Crawlers
+User-agent: GPTBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic Claude Crawler
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+# Perplexity AI Crawler
+User-agent: PerplexityBot
+Allow: /
+
+# OpenAI Search
+User-agent: OAI-SearchBot
+Allow: /
+
+# Microsoft Bing AI
+User-agent: BingBot
+Allow: /
+Crawl-delay: 1
+
+# Google Bard/Gemini
+User-agent: GoogleOther
+Allow: /
+
+# Common web crawlers
+User-agent: Googlebot
+Allow: /
+
+# Default for all other crawlers
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
+Crawl-delay: 1
+
+# Sitemap
+Sitemap: https://mycoachpilot.com/sitemap.xml
+Host: https://mycoachpilot.com

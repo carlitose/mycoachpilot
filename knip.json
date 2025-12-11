@@ -1,0 +1,27 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "app/**/*.{ts,tsx}",
+    "components/**/*.{ts,tsx}"
+  ],
+  "project": [
+    "**/*.{ts,tsx,js,jsx}"
+  ],
+  "ignore": [
+    "next-sitemap.config.js",
+    "app/sw.ts",
+    "public/sw.js",
+    "public/swe-worker-*.js"
+  ],
+  "ignoreDependencies": [
+    "@serwist/build"
+  ],
+  "ignoreBinaries": [
+    "tsr"
+  ],
+  "next": {
+    "entry": [
+      "next.config.js"
+    ]
+  }
+}
