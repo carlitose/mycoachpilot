@@ -196,6 +196,7 @@ export default function AIConfigForm() {
                 selectedTemplateId={config?.selected_template_id}
                 selectedCustomTemplateId={config?.selected_custom_template_id}
                 onSelect={handleTemplateSelect}
+                customTemplates={customTemplates}
               />
             </div>
           )}

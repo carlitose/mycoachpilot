@@ -49,3 +49,4 @@ public/worker-*.js
 # PWA fallback files (generated)
 public/fallback-*.js
 public/fallback-*.js.map
+CLAUDE.md

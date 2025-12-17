@@ -18,15 +18,16 @@ interface TemplateSelectorProps {
   selectedTemplateId: string | null;
   selectedCustomTemplateId: string | null;
   onSelect: (templateId: string, isCustom: boolean) => void;
+  customTemplates: Template[];
 }
 
 export default function TemplateSelector({
   selectedTemplateId,
   selectedCustomTemplateId,
   onSelect,
+  customTemplates,
 }: TemplateSelectorProps) {
   const [systemTemplates, setSystemTemplates] = useState<Template[]>([]);
-  const [customTemplates, setCustomTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,14 +38,6 @@ export default function TemplateSelector({
     try {
       // Load system templates
       setSystemTemplates(SYSTEM_TEMPLATES);
-
-      // Load custom templates from localStorage
-      const savedTemplates = localStorage.getItem('custom_templates');
-      if (savedTemplates) {
-        setCustomTemplates(JSON.parse(savedTemplates));
-      } else {
-        setCustomTemplates([]);
-      }
     } catch (error) {
       log.error('Error fetching templates:', error);
     } finally {
