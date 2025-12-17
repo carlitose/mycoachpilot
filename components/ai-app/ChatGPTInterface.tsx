@@ -1,5 +1,5 @@
 "use client"
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import Link from "next/link";
 import { useState, ChangeEvent } from 'react';
 
@@ -12,6 +12,8 @@ import MobileMenu from '@/components/ai-app/MobileMenu'
 import EmptyState from '@/components/ai-app/EmptyState'
 import OnboardingTour from '@/components/ai-app/OnboardingTour'
 import FloatingTranscriptPiP from '@/components/ai-app/FloatingTranscriptPiP'
+import SessionHistoryDrawer from '@/components/ai-app/SessionHistoryDrawer'
+import SessionHistoryViewer from '@/components/ai-app/SessionHistoryViewer'
 
 // Importing hooks
 import { useSession } from '@/hooks/ai-hooks/useSession'
@@ -19,6 +21,8 @@ import { useScreenCapture } from '@/hooks/ai-hooks/useScreenCapture'
 import { useFileUpload } from '@/hooks/ai-hooks/useFileUpload'
 import { useTabAudioCapture } from '@/hooks/ai-hooks/useTabAudioCapture'
 import { usePictureInPicture } from '@/hooks/ai-hooks/usePictureInPicture'
+import { useSessionHistory } from '@/hooks/ai-hooks/useSessionHistory'
+import type { SessionHistory } from '@/types/ai-types/chat'
 
 
 export default function ChatGPTInterface() {
@@ -27,6 +31,13 @@ export default function ChatGPTInterface() {
 
   // State for onboarding tour
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // State for session history
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [selectedHistorySession, setSelectedHistorySession] = useState<SessionHistory | null>(null);
+
+  // Ref to track previous session state for auto-save
+  const prevSessionActiveRef = useRef(false);
 
   // Use session hook
   const {
@@ -40,8 +51,55 @@ export default function ChatGPTInterface() {
     saveConversation,
     clearMessages,
     deleteMessage,
-    // currentMode - available but not used in this component yet
+    currentMode,
+    sessionStartTime,
+    templateId,
   } = useSession();
+
+  // Use session history hook
+  const {
+    sessions: historySessions,
+    loadSession,
+    saveSession: saveToHistory,
+    deleteSession: deleteHistorySession,
+    clearAllHistory,
+    exportSession,
+    storageInfo,
+  } = useSessionHistory();
+
+  // Auto-save session to history when session ends
+  useEffect(() => {
+    // Detect transition from active to inactive
+    if (prevSessionActiveRef.current && !isSessionActive) {
+      // Session just ended - save to history
+      if (sessionId && sessionStartTime && messages.length > 0) {
+        saveToHistory({
+          sessionId,
+          startedAt: sessionStartTime,
+          mode: currentMode,
+          messages,
+          templateId: templateId || undefined,
+        });
+      }
+    }
+    prevSessionActiveRef.current = isSessionActive;
+  }, [isSessionActive, sessionId, sessionStartTime, messages, currentMode, templateId, saveToHistory]);
+
+  // Handle selecting a session from history
+  const handleSelectHistorySession = (historySessionId: string) => {
+    const session = loadSession(historySessionId);
+    if (session) {
+      setSelectedHistorySession(session);
+      setIsHistoryDrawerOpen(false);
+    }
+  };
+
+  // Handle export from viewer
+  const handleExportSelectedSession = () => {
+    if (selectedHistorySession) {
+      exportSession(selectedHistorySession.sessionId);
+    }
+  };
 
   // For Realtime mode, connection status is based on session status
   const isConnected = isSessionActive;
@@ -183,6 +241,16 @@ export default function ChatGPTInterface() {
 
         {/* Desktop Navigation - Hidden on Mobile */}
         <div className="hidden md:flex items-center gap-3">
+          <button
+            onClick={() => setIsHistoryDrawerOpen(true)}
+            className="px-3 py-1 text-sm bg-slate-800 hover:bg-slate-700 rounded-md transition flex items-center gap-1"
+            title="Session History"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            History
+          </button>
           {isCapturingTabAudio ? (
             <button
               onClick={stopTabCapture}
@@ -214,6 +282,7 @@ export default function ChatGPTInterface() {
           isCapturingTabAudio={isCapturingTabAudio}
           onStartTabCapture={handleStartTabCapture}
           onStopTabCapture={stopTabCapture}
+          onOpenHistory={() => setIsHistoryDrawerOpen(true)}
         />
       </div>
 
@@ -289,6 +358,25 @@ export default function ChatGPTInterface() {
         isSessionActive={isSessionActive}
         pipWindow={pipWindow}
         onClose={closePiP}
+      />
+
+      {/* Session History Drawer */}
+      <SessionHistoryDrawer
+        isOpen={isHistoryDrawerOpen}
+        onClose={() => setIsHistoryDrawerOpen(false)}
+        sessions={historySessions}
+        onSelectSession={handleSelectHistorySession}
+        onDeleteSession={deleteHistorySession}
+        onClearAll={clearAllHistory}
+        storageInfo={storageInfo}
+      />
+
+      {/* Session History Viewer */}
+      <SessionHistoryViewer
+        isOpen={selectedHistorySession !== null}
+        onClose={() => setSelectedHistorySession(null)}
+        session={selectedHistorySession}
+        onExport={handleExportSelectedSession}
       />
     </div>
   )

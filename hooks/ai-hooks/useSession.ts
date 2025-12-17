@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Message } from '@/types/ai-types/chat';
+import { Message, SessionMode } from '@/types/ai-types/chat';
 import { toast } from 'react-hot-toast';
 import { startSimpleRealtimeSession } from '@/lib/simpleRealtime';
 import { createAudioMixer, AudioMixerResult } from '@/lib/audioMixer';
@@ -21,7 +21,10 @@ interface SessionHookResult {
   saveConversation: () => Promise<void>;
   clearMessages: () => void;
   deleteMessage: (index: number) => void;
-  currentMode: 'conversation' | 'transcript_only'; // Current session mode
+  currentMode: SessionMode;
+  // Session history support
+  sessionStartTime: string | null;
+  templateId: string | null;
 }
 
 export function useSession(): SessionHookResult {
@@ -44,7 +47,10 @@ export function useSession(): SessionHookResult {
   const [isCustomTemplate, setIsCustomTemplate] = useState(false);
 
   // Mode tracking
-  const [currentMode, setCurrentMode] = useState<'conversation' | 'transcript_only'>('conversation');
+  const [currentMode, setCurrentMode] = useState<SessionMode>('conversation');
+
+  // Session start time for history tracking
+  const sessionStartTimeRef = useRef<string | null>(null);
 
   // Audio mixer for combining microphone + tab audio
   const [audioMixer, setAudioMixer] = useState<AudioMixerResult | null>(null);
@@ -322,6 +328,9 @@ export function useSession(): SessionHookResult {
         // Create new session ID (for compatibility with existing UI)
         const newSessionId = `realtime-${Date.now()}`;
         setSessionId(newSessionId);
+
+        // Track session start time for history
+        sessionStartTimeRef.current = new Date().toISOString();
 
         // Get ephemeral token from API route
         log.info('Requesting ephemeral token from API...', { mode, isTranscriptOnly });
@@ -647,6 +656,8 @@ export function useSession(): SessionHookResult {
     saveConversation,
     clearMessages,
     deleteMessage,
-    currentMode
+    currentMode,
+    sessionStartTime: sessionStartTimeRef.current,
+    templateId,
   };
 } 

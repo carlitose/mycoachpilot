@@ -1,18 +1,20 @@
 "use client"
 import Link from "next/link";
-import { X, Menu } from "lucide-react";
+import { X, Menu, History } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface MobileMenuProps {
   isCapturingTabAudio: boolean;
   onStartTabCapture: () => void;
   onStopTabCapture: () => void;
+  onOpenHistory?: () => void;
 }
 
 export default function MobileMenu({
   isCapturingTabAudio,
   onStartTabCapture,
-  onStopTabCapture
+  onStopTabCapture,
+  onOpenHistory
 }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -85,6 +87,22 @@ export default function MobileMenu({
           {/* Menu Items */}
           <nav className="flex-1 overflow-y-auto p-4">
             <ul className="space-y-2">
+              {/* Session History */}
+              {onOpenHistory && (
+                <li>
+                  <button
+                    onClick={() => {
+                      handleClose();
+                      onOpenHistory();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg transition"
+                  >
+                    <History size={20} />
+                    <span className="font-medium">Session History</span>
+                  </button>
+                </li>
+              )}
+
               {/* Tab Audio Capture */}
               <li>
                 <button

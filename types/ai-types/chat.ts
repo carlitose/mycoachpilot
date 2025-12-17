@@ -54,4 +54,29 @@ type EventUpdate =
 interface ScreenInfo {
   id: string;
   name: string;
+}
+
+// Session history types
+export type SessionMode = 'conversation' | 'transcript_only';
+
+export interface SessionHistory {
+  sessionId: string;
+  startedAt: string;
+  endedAt: string;
+  durationSeconds: number;
+  mode: SessionMode;
+  messages: Message[];
+  messageCount: number;
+  title?: string;
+  templateId?: string;
+}
+
+export interface SessionHistoryPreview {
+  sessionId: string;
+  startedAt: string;
+  endedAt: string;
+  durationSeconds: number;
+  mode: SessionMode;
+  messageCount: number;
+  title?: string;
 } 
