@@ -1,5 +1,5 @@
 "use client"
-import { Mic, Settings, Play, Camera } from 'lucide-react';
+import { Mic, Settings, Play, Camera, PictureInPicture2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface EmptyStateProps {
@@ -91,6 +91,16 @@ export default function EmptyState({ onStartSession }: EmptyStateProps) {
             </div>
             <p className="text-sm text-slate-400">
               Share what you&apos;re seeing with AI using screen capture
+            </p>
+          </div>
+
+          <div className="bg-slate-800/50 rounded-lg p-4 space-y-2 border border-slate-700">
+            <div className="flex items-center gap-2 text-violet-400">
+              <PictureInPicture2 className="w-5 h-5" />
+              <h3 className="font-semibold">Floating Transcript</h3>
+            </div>
+            <p className="text-sm text-slate-400">
+              Pop out the transcript in a floating window (Chrome only)
             </p>
           </div>
         </div>

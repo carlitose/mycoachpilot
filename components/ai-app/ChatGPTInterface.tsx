@@ -11,12 +11,14 @@ import TabAudioCaptureGuide from '@/components/ai-app/TabAudioCaptureGuide'
 import MobileMenu from '@/components/ai-app/MobileMenu'
 import EmptyState from '@/components/ai-app/EmptyState'
 import OnboardingTour from '@/components/ai-app/OnboardingTour'
+import FloatingTranscriptPiP from '@/components/ai-app/FloatingTranscriptPiP'
 
 // Importing hooks
 import { useSession } from '@/hooks/ai-hooks/useSession'
 import { useScreenCapture } from '@/hooks/ai-hooks/useScreenCapture'
 import { useFileUpload } from '@/hooks/ai-hooks/useFileUpload'
 import { useTabAudioCapture } from '@/hooks/ai-hooks/useTabAudioCapture'
+import { usePictureInPicture } from '@/hooks/ai-hooks/usePictureInPicture'
 
 
 export default function ChatGPTInterface() {
@@ -79,6 +81,24 @@ export default function ChatGPTInterface() {
     stopTabCapture,
     error: tabCaptureError
   } = useTabAudioCapture();
+
+  // Use Picture-in-Picture hook for floating transcript
+  const {
+    isPiPSupported,
+    isPiPOpen,
+    pipWindow,
+    openPiP,
+    closePiP
+  } = usePictureInPicture({ width: 400, height: 500 });
+
+  // Handle PiP toggle
+  const handleTogglePiP = async () => {
+    if (isPiPOpen) {
+      closePiP();
+    } else {
+      await openPiP();
+    }
+  };
 
   // Handle tab capture start
   const handleStartTabCapture = async () => {
@@ -207,12 +227,15 @@ export default function ChatGPTInterface() {
             isStreamError={isStreamError}
             isCapturingScreen={isCapturingScreen}
             isProcessingFile={isProcessingFile}
+            isPiPOpen={isPiPOpen}
+            isPiPSupported={isPiPSupported}
             onToggleSession={toggleSession}
             onAnalyzeScreenshot={handleAnalyzeScreenshot}
             onUploadFile={triggerFileInput}
             onThink={startThinkProcess}
             onSaveConversation={saveConversation}
             onClear={clearMessages}
+            onTogglePiP={handleTogglePiP}
           />
 
           <MessageInput
@@ -250,6 +273,14 @@ export default function ChatGPTInterface() {
         capture="environment"
         onChange={handleFileInputChange}
         style={{ display: 'none' }}
+      />
+
+      {/* Picture-in-Picture Transcript Popup */}
+      <FloatingTranscriptPiP
+        messages={messages}
+        isSessionActive={isSessionActive}
+        pipWindow={pipWindow}
+        onClose={closePiP}
       />
     </div>
   )

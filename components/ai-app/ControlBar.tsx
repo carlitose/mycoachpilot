@@ -1,4 +1,4 @@
-import { Play, Square, Trash2, Save, Brain, Camera, Upload } from "lucide-react";
+import { Play, Square, Trash2, Save, Brain, Camera, Upload, PictureInPicture2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ControlBarProps {
@@ -7,12 +7,15 @@ interface ControlBarProps {
   isStreamError: boolean;
   isCapturingScreen: boolean;
   isProcessingFile?: boolean;
+  isPiPOpen?: boolean;
+  isPiPSupported?: boolean;
   onToggleSession: () => void;
   onAnalyzeScreenshot: () => void;
   onUploadFile?: () => void;
   onThink: () => void;
   onSaveConversation: () => void;
   onClear: () => void;
+  onTogglePiP?: () => void;
 }
 
 export default function ControlBar({
@@ -21,12 +24,15 @@ export default function ControlBar({
   isStreamError,
   isCapturingScreen,
   isProcessingFile,
+  isPiPOpen,
+  isPiPSupported,
   onToggleSession,
   onAnalyzeScreenshot,
   onUploadFile,
   onThink,
   onSaveConversation,
-  onClear
+  onClear,
+  onTogglePiP
 }: ControlBarProps) {
   return (
     <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -90,6 +96,26 @@ export default function ControlBar({
       >
         <Save className="w-5 h-5" />
       </Button>
+
+      {/* Picture-in-Picture Transcript */}
+      {onTogglePiP && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onTogglePiP}
+          disabled={!isPiPSupported}
+          title={
+            !isPiPSupported
+              ? "Picture-in-Picture requires Chrome 116+"
+              : isPiPOpen
+                ? "Close transcript popup"
+                : "Open transcript popup"
+          }
+          className={`shrink-0 p-2 ${isPiPOpen ? 'bg-violet-600/20 text-violet-400' : ''}`}
+        >
+          <PictureInPicture2 className="w-5 h-5" />
+        </Button>
+      )}
 
       {/* Clear */}
       <Button
