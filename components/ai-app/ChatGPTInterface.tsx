@@ -163,11 +163,40 @@ export default function ChatGPTInterface() {
   const handleStartTabCapture = async () => {
     setShowTabCaptureGuide(false);
     const stream = await startTabCapture();
+
     if (stream) {
+      // Check if audio tracks exist
+      const audioTracks = stream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        setMessages(prev => [...prev, {
+          role: 'system',
+          content: "⚠️ No audio captured. Make sure to check 'Share tab audio' in the browser dialog."
+        }]);
+        return;
+      }
+
       setMessages(prev => [...prev, {
         role: 'system',
-        content: '🎵 Tab audio capture started! The app can now hear audio from the selected tab.'
+        content: '🎵 Tab audio capture started!'
       }]);
+
+      // If session is already active, restart it with tab audio
+      if (isSessionActive) {
+        setMessages(prev => [...prev, {
+          role: 'system',
+          content: '🔄 Restarting session to include tab audio...'
+        }]);
+
+        // Stop current session
+        await toggleSession();
+
+        // Small delay to ensure cleanup
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Restart with tab audio
+        const tabAudioStream = getTabAudioOnly();
+        await toggleSession(tabAudioStream);
+      }
     } else if (tabCaptureError) {
       setMessages(prev => [...prev, {
         role: 'system',

@@ -68,7 +68,20 @@ const TabAudioCaptureGuide: React.FC<TabAudioCaptureGuideProps> = ({
                   <p className="text-amber-300 font-semibold">⚠️ This checkbox is CRUCIAL - must be checked!</p>
                 </div>
               </div>
+
+              <div className="flex gap-3">
+                <span className="bg-blue-500 text-white px-3 py-1 rounded-full font-bold">5</span>
+                <div>
+                  <p className="font-medium text-lg">Then start your session</p>
+                  <p className="text-slate-300">After tab capture is active, click &quot;Start Session&quot; to begin</p>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-4 mb-6">
+            <h4 className="font-medium text-blue-200 mb-2">💡 Order matters!</h4>
+            <p className="text-blue-100">First capture tab audio, then start the session. If you already started a session, capturing tab audio will automatically restart it with the mixed audio.</p>
           </div>
 
           <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 mb-6">
