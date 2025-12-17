@@ -7,7 +7,14 @@ interface UseTabAudioCaptureResult {
   error: string | null;
 }
 
-export function useTabAudioCapture(): UseTabAudioCaptureResult {
+interface UseTabAudioCaptureResultExtended extends UseTabAudioCaptureResult {
+  /** Get only the audio tracks from the captured stream */
+  getTabAudioOnly: () => MediaStream | null;
+  /** The current captured stream (includes video + audio) */
+  currentStream: MediaStream | null;
+}
+
+export function useTabAudioCapture(): UseTabAudioCaptureResultExtended {
   const [isCapturing, setIsCapturing] = useState(false);
   const [currentStream, setCurrentStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,10 +71,27 @@ export function useTabAudioCapture(): UseTabAudioCaptureResult {
     setIsCapturing(false);
   }, [currentStream]);
 
+  /**
+   * Get only the audio tracks from the captured tab stream.
+   * Creates a new MediaStream containing only audio (no video).
+   * Returns null if no stream is captured or no audio tracks exist.
+   */
+  const getTabAudioOnly = useCallback((): MediaStream | null => {
+    if (!currentStream) return null;
+
+    const audioTracks = currentStream.getAudioTracks();
+    if (audioTracks.length === 0) return null;
+
+    // Create a new stream with only audio tracks
+    return new MediaStream(audioTracks);
+  }, [currentStream]);
+
   return {
     isCapturing,
     startTabCapture,
     stopTabCapture,
-    error
+    error,
+    getTabAudioOnly,
+    currentStream
   };
 }

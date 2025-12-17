@@ -79,7 +79,8 @@ export default function ChatGPTInterface() {
     isCapturing: isCapturingTabAudio,
     startTabCapture,
     stopTabCapture,
-    error: tabCaptureError
+    error: tabCaptureError,
+    getTabAudioOnly
   } = useTabAudioCapture();
 
   // Use Picture-in-Picture hook for floating transcript
@@ -105,16 +106,23 @@ export default function ChatGPTInterface() {
     setShowTabCaptureGuide(false);
     const stream = await startTabCapture();
     if (stream) {
-      setMessages(prev => [...prev, { 
-        role: 'system', 
-        content: '🎵 Tab audio capture started! The app can now hear audio from the selected tab.' 
+      setMessages(prev => [...prev, {
+        role: 'system',
+        content: '🎵 Tab audio capture started! The app can now hear audio from the selected tab.'
       }]);
     } else if (tabCaptureError) {
-      setMessages(prev => [...prev, { 
-        role: 'system', 
-        content: `❌ Tab capture failed: ${tabCaptureError}` 
+      setMessages(prev => [...prev, {
+        role: 'system',
+        content: `❌ Tab capture failed: ${tabCaptureError}`
       }]);
     }
+  };
+
+  // Handle toggle session with optional tab audio
+  const handleToggleSession = async () => {
+    // If tab audio is being captured, pass it to the session
+    const tabAudioStream = isCapturingTabAudio ? getTabAudioOnly() : null;
+    await toggleSession(tabAudioStream);
   };
 
   // Check if user has completed onboarding
@@ -211,7 +219,7 @@ export default function ChatGPTInterface() {
 
       {/* Show EmptyState when no messages and session not active */}
       {messages.length === 0 && !isSessionActive ? (
-        <EmptyState onStartSession={toggleSession} />
+        <EmptyState onStartSession={handleToggleSession} />
       ) : (
         <MessageList
           messages={messages}
@@ -229,7 +237,7 @@ export default function ChatGPTInterface() {
             isProcessingFile={isProcessingFile}
             isPiPOpen={isPiPOpen}
             isPiPSupported={isPiPSupported}
-            onToggleSession={toggleSession}
+            onToggleSession={handleToggleSession}
             onAnalyzeScreenshot={handleAnalyzeScreenshot}
             onUploadFile={triggerFileInput}
             onThink={startThinkProcess}

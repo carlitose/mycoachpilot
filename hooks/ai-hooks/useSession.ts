@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation';
 import { Message } from '@/types/ai-types/chat';
 import { toast } from 'react-hot-toast';
 import { startSimpleRealtimeSession } from '@/lib/simpleRealtime';
+import { createAudioMixer, AudioMixerResult } from '@/lib/audioMixer';
 import { log } from '@/lib/logger';
 import { useSessionTracking } from './useSessionTracking';
 
@@ -13,7 +14,7 @@ interface SessionHookResult {
   audioStreamControl: null; // Kept for compatibility
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-  toggleSession: () => Promise<void>;
+  toggleSession: (tabAudioStream?: MediaStream | null) => Promise<void>;
   sendTextMessage: (text: string) => Promise<void>;
   sendImage: (imageData: string, prompt?: string) => Promise<void>;
   startThinkProcess: () => Promise<void>;
@@ -44,6 +45,9 @@ export function useSession(): SessionHookResult {
 
   // Mode tracking
   const [currentMode, setCurrentMode] = useState<'conversation' | 'transcript_only'>('conversation');
+
+  // Audio mixer for combining microphone + tab audio
+  const [audioMixer, setAudioMixer] = useState<AudioMixerResult | null>(null);
 
   // Inactivity timeout reference (60 minutes for trial, 120 minutes for paid users)
   const inactivityTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -188,7 +192,7 @@ export function useSession(): SessionHookResult {
   }, [currentSession, cleanupSession]);
 
   // Toggle session (start/stop)
-  const toggleSession = useCallback(async () => {
+  const toggleSession = useCallback(async (tabAudioStream?: MediaStream | null) => {
     // Prevent multiple simultaneous calls (guard against rapid clicks)
     if (isStarting) {
       log.warn("Session start already in progress, ignoring duplicate request");
@@ -198,6 +202,13 @@ export function useSession(): SessionHookResult {
     if (isSessionActive) {
       // Stop the session
       log.info("Stopping realtime session...");
+
+      // Cleanup audio mixer if it exists
+      if (audioMixer) {
+        log.info("Cleaning up audio mixer...");
+        audioMixer.cleanup();
+        setAudioMixer(null);
+      }
 
       if (currentSession) {
         try {
@@ -340,14 +351,49 @@ export function useSession(): SessionHookResult {
           }]);
         };
 
+        // Setup mixed audio if tab audio stream is provided (works for both conversation and transcript mode)
+        let customMediaStream: MediaStream | undefined;
+
+        if (tabAudioStream) {
+          try {
+            log.info('Setting up mixed audio (microphone + tab audio)...');
+
+            // Get microphone stream
+            const micStream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+              }
+            });
+
+            // Create mixed stream
+            const mixer = await createAudioMixer(micStream, tabAudioStream);
+            customMediaStream = mixer.mixedStream;
+            setAudioMixer(mixer);
+
+            log.info('Mixed audio stream created successfully');
+          } catch (mixError) {
+            log.error('Failed to create mixed audio stream:', { mixError });
+            toast.error('Could not capture tab audio. Using microphone only.');
+            // Continue without mixed audio - will use default microphone
+          }
+        }
+
         // Use simple realtime function with ephemeral token
-        log.info('Starting simple realtime session...', { mode, model, isTranscriptOnly });
+        log.info('Starting simple realtime session...', {
+          mode,
+          model,
+          isTranscriptOnly,
+          hasMixedAudio: !!customMediaStream
+        });
         const realtimeResult = await startSimpleRealtimeSession(
           token,
           model,
           isTranscriptOnly,
           instructions,
-          isTranscriptOnly ? handleTranscript : undefined
+          isTranscriptOnly ? handleTranscript : undefined,
+          customMediaStream
         );
 
         // Handle different return types (WebSocket for transcript, Session for conversation)
@@ -393,14 +439,29 @@ export function useSession(): SessionHookResult {
 
         setMessages([{
           role: 'system' as const,
-          content: '--- Realtime session started ---'
+          content: customMediaStream
+            ? '--- Realtime session started (with tab audio) ---'
+            : '--- Realtime session started ---'
         }]);
-        
-        toast.success(isTranscriptOnly ? "Microphone listening (Transcript Mode)" : "Connected! Microphone active.");
+
+        // Show appropriate success message
+        if (isTranscriptOnly) {
+          toast.success("Microphone listening (Transcript Mode)");
+        } else if (customMediaStream) {
+          toast.success("Connected! Microphone + Tab audio active.");
+        } else {
+          toast.success("Connected! Microphone active.");
+        }
 
       } catch (error) {
         log.error("Error starting realtime session:", { error });
         setIsStarting(false); // Clear loading state on error
+
+        // Cleanup audio mixer on error
+        if (audioMixer) {
+          audioMixer.cleanup();
+          setAudioMixer(null);
+        }
 
         if (error instanceof Error && error.message.includes("Realtime API is only available")) {
           toast.error("Please switch to OpenAI provider in Settings to use real-time mode");
@@ -409,7 +470,7 @@ export function useSession(): SessionHookResult {
         }
       }
     }
-  }, [isSessionActive, isStarting, setMessages, router, resetInactivityTimer, cleanupSession, startTracking, stopTracking, currentSession, currentMode]);
+  }, [isSessionActive, isStarting, setMessages, router, resetInactivityTimer, cleanupSession, startTracking, stopTracking, currentSession, currentMode, audioMixer]);
 
   // Handle image upload - Note: Realtime API doesn't support direct image sending
   const sendImage = useCallback(async (imageData: string, prompt: string = "What's in this image?") => {

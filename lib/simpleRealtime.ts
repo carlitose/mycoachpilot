@@ -1,4 +1,4 @@
-import { RealtimeAgent, RealtimeSession } from '@openai/agents-realtime';
+import { RealtimeAgent, RealtimeSession, OpenAIRealtimeWebRTC } from '@openai/agents-realtime';
 import { realtimeTools } from './realtime-agents-tools';
 import { log } from './logger';
 
@@ -10,7 +10,8 @@ export async function startSimpleRealtimeSession(
   model: string = 'gpt-realtime',
   isTranscriptOnly: boolean = false,
   instructions?: string,
-  onTranscript?: OnTranscriptCallback
+  onTranscript?: OnTranscriptCallback,
+  customMediaStream?: MediaStream
 ) {
   log.info('[SimpleRealtime] Creating agent...', { model, isTranscriptOnly });
 
@@ -108,8 +109,12 @@ export async function startSimpleRealtimeSession(
 
     // Setup audio capture and streaming
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      log.info('[SimpleRealtime] Microphone access granted');
+      // Use custom media stream if provided (mixed mic + tab audio), otherwise get microphone
+      const stream = customMediaStream || await navigator.mediaDevices.getUserMedia({ audio: true });
+      log.info('[SimpleRealtime] Audio stream ready', {
+        isCustomStream: !!customMediaStream,
+        audioTracks: stream.getAudioTracks().length
+      });
 
       // Create AudioContext to process audio
       const audioContext = new AudioContext({ sampleRate: 24000 });
@@ -146,6 +151,7 @@ export async function startSimpleRealtimeSession(
       log.info('[SimpleRealtime] Audio streaming started');
 
       // Return WebSocket with audio cleanup
+      const isCustomStream = !!customMediaStream;
       return {
         ws,
         session: null,
@@ -153,7 +159,11 @@ export async function startSimpleRealtimeSession(
         cleanup: () => {
           processor.disconnect();
           source.disconnect();
-          stream.getTracks().forEach(track => track.stop());
+          // Only stop tracks if we created the stream (not custom)
+          // Custom streams are managed by the audio mixer
+          if (!isCustomStream) {
+            stream.getTracks().forEach(track => track.stop());
+          }
           audioContext.close();
         }
       };
@@ -178,9 +188,20 @@ export async function startSimpleRealtimeSession(
 
     log.info('[SimpleRealtime] Agent created with dynamic instructions from template');
 
+    // Create custom transport if a custom MediaStream is provided (e.g., mixed mic + tab audio)
+    // Otherwise, use default 'webrtc' which will use the microphone directly
+    const transport: 'webrtc' | OpenAIRealtimeWebRTC = customMediaStream
+      ? new OpenAIRealtimeWebRTC({ mediaStream: customMediaStream })
+      : 'webrtc';
+
+    if (customMediaStream) {
+      log.info('[SimpleRealtime] Using custom MediaStream for audio input (mixed audio)');
+    }
+
     log.info('[SimpleRealtime] Creating session...');
     const session = new RealtimeSession(agent, {
       model: model, // 'gpt-realtime'
+      transport,
       config: {
         outputModalities: ['text']
       }
@@ -188,7 +209,8 @@ export async function startSimpleRealtimeSession(
 
     log.info('[SimpleRealtime] Session created', {
       model: model,
-      outputModalities: ['text']
+      outputModalities: ['text'],
+      hasCustomMediaStream: !!customMediaStream
     });
 
     // Log history updates specifically
