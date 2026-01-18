@@ -28,6 +28,7 @@ interface UseSessionHistoryResult {
   exportSession: (sessionId: string) => void;
   storageInfo: { count: number; maxCount: number };
   refreshSessions: () => void;
+  getConversationSummary: (session: SessionHistory) => string;
 }
 
 export function useSessionHistory(): UseSessionHistoryResult {
@@ -145,6 +146,24 @@ export function useSessionHistory(): UseSessionHistoryResult {
     }
   }, []);
 
+  const getConversationSummary = useCallback((session: SessionHistory): string => {
+    const contentMessages = session.messages.filter(
+      m => m.role === 'user' || m.role === 'assistant' || m.role === 'transcript'
+    );
+
+    const MAX_CHARS = 2000;
+    let summary = '';
+
+    for (const msg of contentMessages.slice(-10)) {
+      const prefix = msg.role === 'user' ? 'User' : 'Assistant';
+      const line = `${prefix}: ${msg.content.slice(0, 500)}`;
+      if ((summary + line).length > MAX_CHARS) break;
+      summary += line + '\n\n';
+    }
+
+    return summary.trim();
+  }, []);
+
   return {
     sessions,
     loadSession,
@@ -154,5 +173,6 @@ export function useSessionHistory(): UseSessionHistoryResult {
     exportSession,
     storageInfo,
     refreshSessions,
+    getConversationSummary,
   };
 }

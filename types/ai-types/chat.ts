@@ -79,4 +79,11 @@ export interface SessionHistoryPreview {
   mode: SessionMode;
   messageCount: number;
   title?: string;
+}
+
+export interface ResumedSessionInfo {
+  originalSessionId: string;
+  originalTitle?: string;
+  resumedAt: string;
+  messageCount: number;
 } 

@@ -14,6 +14,7 @@ import OnboardingTour from '@/components/ai-app/OnboardingTour'
 import FloatingTranscriptPiP from '@/components/ai-app/FloatingTranscriptPiP'
 import SessionHistoryDrawer from '@/components/ai-app/SessionHistoryDrawer'
 import SessionHistoryViewer from '@/components/ai-app/SessionHistoryViewer'
+import ResumedSessionBanner from '@/components/ai-app/ResumedSessionBanner'
 
 // Importing hooks
 import { useSession } from '@/hooks/ai-hooks/useSession'
@@ -22,7 +23,8 @@ import { useFileUpload } from '@/hooks/ai-hooks/useFileUpload'
 import { useTabAudioCapture } from '@/hooks/ai-hooks/useTabAudioCapture'
 import { usePictureInPicture } from '@/hooks/ai-hooks/usePictureInPicture'
 import { useSessionHistory } from '@/hooks/ai-hooks/useSessionHistory'
-import type { SessionHistory } from '@/types/ai-types/chat'
+import type { SessionHistory, ResumedSessionInfo } from '@/types/ai-types/chat'
+import { toast } from 'react-hot-toast'
 
 
 export default function ChatGPTInterface() {
@@ -54,6 +56,10 @@ export default function ChatGPTInterface() {
     currentMode,
     sessionStartTime,
     templateId,
+    // Resume support
+    resumedFromSession,
+    loadResumedMessages,
+    clearResumeState,
   } = useSession();
 
   // Use session history hook
@@ -65,6 +71,7 @@ export default function ChatGPTInterface() {
     clearAllHistory,
     exportSession,
     storageInfo,
+    getConversationSummary,
   } = useSessionHistory();
 
   // Auto-save session to history when session ends
@@ -100,6 +107,32 @@ export default function ChatGPTInterface() {
       exportSession(selectedHistorySession.sessionId);
     }
   };
+
+  // Handle resume session from history
+  const handleResumeSession = (historySessionId: string) => {
+    const session = loadSession(historySessionId);
+    if (!session) {
+      toast.error('Session not found');
+      return;
+    }
+
+    const resumeInfo: ResumedSessionInfo = {
+      originalSessionId: session.sessionId,
+      originalTitle: session.title,
+      resumedAt: new Date().toISOString(),
+      messageCount: session.messages.length,
+    };
+
+    const contextSummary = getConversationSummary(session);
+    loadResumedMessages(session.messages, resumeInfo, contextSummary);
+
+    setSelectedHistorySession(null);
+    setIsHistoryDrawerOpen(false);
+    toast.success('Session resumed! Start a new session to continue.');
+  };
+
+  // Determine if resume is allowed (not during active session)
+  const canResumeSession = !isSessionActive;
 
   // For Realtime mode, connection status is based on session status
   const isConnected = isSessionActive;
@@ -315,6 +348,14 @@ export default function ChatGPTInterface() {
         />
       </div>
 
+      {/* Resumed Session Banner */}
+      {resumedFromSession && (
+        <ResumedSessionBanner
+          sessionInfo={resumedFromSession}
+          onClear={clearResumeState}
+        />
+      )}
+
       {/* Show EmptyState when no messages and session not active */}
       {messages.length === 0 && !isSessionActive ? (
         <EmptyState onStartSession={handleToggleSession} />
@@ -398,6 +439,8 @@ export default function ChatGPTInterface() {
         onDeleteSession={deleteHistorySession}
         onClearAll={clearAllHistory}
         storageInfo={storageInfo}
+        onResumeSession={handleResumeSession}
+        canResume={canResumeSession}
       />
 
       {/* Session History Viewer */}
@@ -406,6 +449,8 @@ export default function ChatGPTInterface() {
         onClose={() => setSelectedHistorySession(null)}
         session={selectedHistorySession}
         onExport={handleExportSelectedSession}
+        onResume={() => selectedHistorySession && handleResumeSession(selectedHistorySession.sessionId)}
+        canResume={canResumeSession}
       />
     </div>
   )

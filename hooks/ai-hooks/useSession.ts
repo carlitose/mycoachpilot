@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Message, SessionMode } from '@/types/ai-types/chat';
+import { Message, SessionMode, ResumedSessionInfo } from '@/types/ai-types/chat';
 import { toast } from 'react-hot-toast';
 import { startSimpleRealtimeSession } from '@/lib/simpleRealtime';
 import { createAudioMixer, AudioMixerResult } from '@/lib/audioMixer';
@@ -25,6 +25,10 @@ interface SessionHookResult {
   // Session history support
   sessionStartTime: string | null;
   templateId: string | null;
+  // Resume support
+  resumedFromSession: ResumedSessionInfo | null;
+  loadResumedMessages: (msgs: Message[], sessionInfo: ResumedSessionInfo, contextSummary?: string) => void;
+  clearResumeState: () => void;
 }
 
 export function useSession(): SessionHookResult {
@@ -54,6 +58,10 @@ export function useSession(): SessionHookResult {
 
   // Audio mixer for combining microphone + tab audio
   const [audioMixer, setAudioMixer] = useState<AudioMixerResult | null>(null);
+
+  // Resume state
+  const [resumedFromSession, setResumedFromSession] = useState<ResumedSessionInfo | null>(null);
+  const [resumeContext, setResumeContext] = useState<string | null>(null);
 
   // Inactivity timeout reference (60 minutes for trial, 120 minutes for paid users)
   const inactivityTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -321,8 +329,15 @@ export function useSession(): SessionHookResult {
            if (config.custom_instructions) {
                instructions += `\n\nAdditional Instructions:\n${config.custom_instructions}`;
            }
+
+           // Inject resume context if available
+           if (resumeContext) {
+               instructions = `PREVIOUS CONVERSATION CONTEXT (for continuity):\n${resumeContext}\n\n---\n\n${instructions}`;
+               // Clear resume context after using it
+               setResumeContext(null);
+           }
         }
-        
+
         const model = 'gpt-4o-realtime-preview-2024-12-17'; // Default model
 
         // Create new session ID (for compatibility with existing UI)
@@ -642,6 +657,29 @@ export function useSession(): SessionHookResult {
     setMessages(prevMessages => prevMessages.filter((_, index) => index !== indexToDelete));
   }, []);
 
+  // Load messages from a resumed session
+  const loadResumedMessages = useCallback((
+    msgs: Message[],
+    sessionInfo: ResumedSessionInfo,
+    contextSummary?: string
+  ) => {
+    setMessages([
+      { role: 'system', content: '--- Resumed from previous session ---' },
+      ...msgs
+    ]);
+    setResumedFromSession(sessionInfo);
+    if (contextSummary) {
+      setResumeContext(contextSummary);
+    }
+  }, []);
+
+  // Clear resume state
+  const clearResumeState = useCallback(() => {
+    setResumedFromSession(null);
+    setResumeContext(null);
+    setMessages([]);
+  }, []);
+
   return {
     sessionId,
     isSessionActive,
@@ -659,5 +697,9 @@ export function useSession(): SessionHookResult {
     currentMode,
     sessionStartTime: sessionStartTimeRef.current,
     templateId,
+    // Resume support
+    resumedFromSession,
+    loadResumedMessages,
+    clearResumeState,
   };
 } 

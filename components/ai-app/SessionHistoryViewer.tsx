@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { X, Download, Clock, MessageSquare, Mic, Calendar, Copy, Check } from 'lucide-react';
+import { X, Download, Clock, MessageSquare, Mic, Calendar, Copy, Check, RotateCcw } from 'lucide-react';
 import type { SessionHistory } from '@/types/ai-types/chat';
 import { formatDuration } from '@/lib/sessionHistoryStorage';
 import { formatMarkdown } from '@/lib/ai-utils/formatMessage';
@@ -11,6 +11,8 @@ interface SessionHistoryViewerProps {
   onClose: () => void;
   session: SessionHistory | null;
   onExport: () => void;
+  onResume: () => void;
+  canResume: boolean;
 }
 
 export default function SessionHistoryViewer({
@@ -18,6 +20,8 @@ export default function SessionHistoryViewer({
   onClose,
   session,
   onExport,
+  onResume,
+  canResume,
 }: SessionHistoryViewerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -179,6 +183,19 @@ export default function SessionHistoryViewer({
             Session ID: {session.sessionId.slice(0, 20)}...
           </span>
           <div className="flex items-center gap-2">
+            <button
+              onClick={onResume}
+              disabled={!canResume}
+              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition ${
+                canResume
+                  ? 'bg-green-600 hover:bg-green-500'
+                  : 'bg-slate-700 opacity-50 cursor-not-allowed'
+              }`}
+              title={canResume ? 'Resume this session' : 'Stop current session first'}
+            >
+              <RotateCcw size={16} />
+              Resume
+            </button>
             <button
               onClick={onExport}
               className="flex items-center gap-2 px-4 py-2 text-sm bg-slate-800 hover:bg-slate-700 rounded-lg transition"

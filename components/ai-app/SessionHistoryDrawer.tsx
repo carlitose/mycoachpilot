@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { X, History, Trash2, MessageSquare, Mic, Clock, ChevronRight } from 'lucide-react';
+import { X, History, Trash2, MessageSquare, Mic, Clock, ChevronRight, RotateCcw } from 'lucide-react';
 import type { SessionHistoryPreview } from '@/types/ai-types/chat';
 import { formatDuration } from '@/lib/sessionHistoryStorage';
 
@@ -13,6 +13,8 @@ interface SessionHistoryDrawerProps {
   onDeleteSession: (sessionId: string) => void;
   onClearAll: () => void;
   storageInfo: { count: number; maxCount: number };
+  onResumeSession: (sessionId: string) => void;
+  canResume: boolean;
 }
 
 export default function SessionHistoryDrawer({
@@ -23,6 +25,8 @@ export default function SessionHistoryDrawer({
   onDeleteSession,
   onClearAll,
   storageInfo,
+  onResumeSession,
+  canResume,
 }: SessionHistoryDrawerProps) {
   // Prevent body scroll when drawer is open
   useEffect(() => {
@@ -41,6 +45,11 @@ export default function SessionHistoryDrawer({
     if (confirm('Delete this session from history?')) {
       onDeleteSession(sessionId);
     }
+  };
+
+  const handleResume = (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    onResumeSession(sessionId);
   };
 
   const handleClearAll = () => {
@@ -128,7 +137,7 @@ export default function SessionHistoryDrawer({
                     {formatDate(session.startedAt)}
                   </div>
 
-                  {/* Stats and Delete */}
+                  {/* Stats and Actions */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 text-xs text-slate-500">
                       <span className="flex items-center gap-1">
@@ -140,13 +149,25 @@ export default function SessionHistoryDrawer({
                         {session.messageCount} msg
                       </span>
                     </div>
-                    <button
-                      onClick={(e) => handleDelete(e, session.sessionId)}
-                      className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-600 rounded transition opacity-0 group-hover:opacity-100"
-                      aria-label="Delete session"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {canResume && (
+                        <button
+                          onClick={(e) => handleResume(e, session.sessionId)}
+                          className="p-1.5 text-slate-500 hover:text-green-400 hover:bg-slate-600 rounded transition opacity-0 group-hover:opacity-100"
+                          aria-label="Resume session"
+                          title="Resume session"
+                        >
+                          <RotateCcw size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => handleDelete(e, session.sessionId)}
+                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-600 rounded transition opacity-0 group-hover:opacity-100"
+                        aria-label="Delete session"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
