@@ -57,7 +57,7 @@ interface ScreenInfo {
 }
 
 // Session history types
-export type SessionMode = 'conversation' | 'transcript_only';
+export type SessionMode = 'conversation' | 'transcript_only' | 'meeting_coach';
 
 export interface SessionHistory {
   sessionId: string;

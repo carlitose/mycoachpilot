@@ -1,20 +1,29 @@
 "use client"
 import React, { useEffect, useRef } from 'react';
-import Link from "next/link";
 import { useState, ChangeEvent } from 'react';
 
 // Importing components
 import MessageList from '@/components/ai-app/MessageList'
-import MessageInput from '@/components/ai-app/MessageInput'
-import ControlBar from '@/components/ai-app/ControlBar'
 import TabAudioCaptureGuide from '@/components/ai-app/TabAudioCaptureGuide'
 import MobileMenu from '@/components/ai-app/MobileMenu'
 import EmptyState from '@/components/ai-app/EmptyState'
 import OnboardingTour from '@/components/ai-app/OnboardingTour'
 import FloatingTranscriptPiP from '@/components/ai-app/FloatingTranscriptPiP'
-import SessionHistoryDrawer from '@/components/ai-app/SessionHistoryDrawer'
 import SessionHistoryViewer from '@/components/ai-app/SessionHistoryViewer'
 import ResumedSessionBanner from '@/components/ai-app/ResumedSessionBanner'
+
+// Shared components
+import SharedHeader from '@/components/ai-app/shared/SharedHeader'
+import AudioStreamBadge from '@/components/ai-app/shared/AudioStreamBadge'
+import UnifiedHistoryDrawer from '@/components/ai-app/shared/UnifiedHistoryDrawer'
+
+// Conversation components
+import ConversationControlBar from '@/components/ai-app/conversation/ConversationControlBar'
+
+// Meeting Coach components
+import MeetingCoachContent from '@/components/ai-app/meeting-coach/MeetingCoachContent'
+import MeetingHistoryViewer from '@/components/ai-app/meeting-coach/MeetingHistoryViewer'
+import StatusBadge from '@/components/ai-app/meeting-coach/StatusBadge'
 
 // Importing hooks
 import { useSession } from '@/hooks/ai-hooks/useSession'
@@ -24,6 +33,7 @@ import { useTabAudioCapture } from '@/hooks/ai-hooks/useTabAudioCapture'
 import { usePictureInPicture } from '@/hooks/ai-hooks/usePictureInPicture'
 import { useSessionHistory } from '@/hooks/ai-hooks/useSessionHistory'
 import type { SessionHistory, ResumedSessionInfo } from '@/types/ai-types/chat'
+import type { MeetingHistoryItem } from '@/lib/meeting-coach/types'
 import { toast } from 'react-hot-toast'
 
 
@@ -37,6 +47,7 @@ export default function ChatGPTInterface() {
   // State for session history
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const [selectedHistorySession, setSelectedHistorySession] = useState<SessionHistory | null>(null);
+  const [selectedMeetingSession, setSelectedMeetingSession] = useState<MeetingHistoryItem | null>(null);
 
   // Ref to track previous session state for auto-save
   const prevSessionActiveRef = useRef(false);
@@ -61,6 +72,17 @@ export default function ChatGPTInterface() {
     loadResumedMessages,
     clearResumeState,
   } = useSession();
+
+  // Meeting Coach lifted state for SharedHeader and history handlers (hook now called in MeetingCoachContent)
+  const [meetingCoachHeaderState, setMeetingCoachHeaderState] = useState({
+    isActive: false,
+    isConnecting: false,
+    isConnected: false,
+    deepgramStatus: 'disconnected' as 'connected' | 'connecting' | 'disconnected' | 'error',
+    hasAudioStream: false,
+    error: undefined as any,
+    history: null as any, // History object from useMeetingCoach for history handlers
+  });
 
   // Use session history hook
   const {
@@ -293,82 +315,102 @@ export default function ChatGPTInterface() {
     }
   };
 
+  // Meeting Coach history handlers (control bar handlers moved to MeetingCoachContent)
+  const handleSelectMeetingSession = (sessionId: string) => {
+    if (!meetingCoachHeaderState.history) return;
+    const session = meetingCoachHeaderState.history.getSession(sessionId);
+    if (session) {
+      setSelectedMeetingSession(session);
+      setIsHistoryDrawerOpen(false);
+    }
+  };
+
+  const handleExportMeetingSession = (sessionId: string, format: 'json' | 'txt') => {
+    if (!meetingCoachHeaderState.history) return;
+    meetingCoachHeaderState.history.downloadSession(sessionId, format);
+  };
+
+  const handleDeleteMeetingSession = (sessionId: string) => {
+    if (!meetingCoachHeaderState.history) return;
+    if (confirm('Delete this meeting session from history?')) {
+      meetingCoachHeaderState.history.deleteSession(sessionId);
+    }
+  };
+
+  const handleClearMeetingHistory = () => {
+    if (!meetingCoachHeaderState.history) return;
+    if (confirm('Delete all meeting history? This cannot be undone.')) {
+      meetingCoachHeaderState.history.clearHistory();
+    }
+  };
+
+  const handleExportSelectedMeeting = (format: 'json' | 'txt') => {
+    if (!selectedMeetingSession) return;
+    handleExportMeetingSession(selectedMeetingSession.id, format);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-950 text-slate-50">
-      {/* Header - Desktop & Mobile */}
-      <div className="p-4 border-b border-slate-800 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg md:text-xl font-bold truncate">My Coach Pilot</h1>
-        </div>
+      {/* Unified Header */}
+      <SharedHeader
+        mode={currentMode === 'meeting_coach' ? 'meeting_coach' : 'conversation'}
+        isSessionActive={currentMode === 'meeting_coach' ? meetingCoachHeaderState.isActive : isSessionActive}
+        audioStreamIndicator={
+          currentMode === 'meeting_coach' ? (
+            <AudioStreamBadge isCapturing={meetingCoachHeaderState.hasAudioStream} />
+          ) : undefined
+        }
+        sessionTimer={
+          // TODO: Re-enable SessionTimer by passing session startTime through onStateChange
+          undefined
+        }
+        statusBadge={
+          currentMode === 'meeting_coach' ? (
+            <StatusBadge
+              isActive={meetingCoachHeaderState.isActive}
+              isConnecting={meetingCoachHeaderState.isConnecting}
+              isConnected={meetingCoachHeaderState.isConnected}
+              deepgramStatus={meetingCoachHeaderState.deepgramStatus}
+              error={meetingCoachHeaderState.error}
+            />
+          ) : undefined
+        }
+        onOpenHistory={() => setIsHistoryDrawerOpen(true)}
+        mobileMenu={
+          currentMode === 'conversation' ? (
+            <MobileMenu
+              isCapturingTabAudio={isCapturingTabAudio}
+              onStartTabCapture={handleStartTabCapture}
+              onStopTabCapture={stopTabCapture}
+              onOpenHistory={() => setIsHistoryDrawerOpen(true)}
+            />
+          ) : undefined
+        }
+      />
 
-        {/* Desktop Navigation - Hidden on Mobile */}
-        <div className="hidden md:flex items-center gap-3">
-          <button
-            onClick={() => setIsHistoryDrawerOpen(true)}
-            className="px-3 py-1 text-sm bg-slate-800 hover:bg-slate-700 rounded-md transition flex items-center gap-1"
-            title="Session History"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            History
-          </button>
-          {isCapturingTabAudio ? (
-            <button
-              onClick={stopTabCapture}
-              className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded-md transition flex items-center gap-1"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-              </svg>
-              Stop Tab Audio
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowTabCaptureGuide(true)}
-              className="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 rounded-md transition flex items-center gap-1"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-              </svg>
-              Capture Tab Audio
-            </button>
+      {/* Content Area - Conditional based on mode */}
+      {currentMode === 'conversation' ? (
+        <>
+          {/* Resumed Session Banner */}
+          {resumedFromSession && (
+            <ResumedSessionBanner
+              sessionInfo={resumedFromSession}
+              onClear={clearResumeState}
+            />
           )}
-          <Link href="/app/settings/ai" className="px-3 py-1 text-sm bg-slate-800 hover:bg-slate-700 rounded-md transition">
-            AI Settings
-          </Link>
-        </div>
 
-        {/* Mobile Menu - Visible only on Mobile */}
-        <MobileMenu
-          isCapturingTabAudio={isCapturingTabAudio}
-          onStartTabCapture={handleStartTabCapture}
-          onStopTabCapture={stopTabCapture}
-          onOpenHistory={() => setIsHistoryDrawerOpen(true)}
-        />
-      </div>
+          {/* Show EmptyState when no messages and session not active */}
+          {messages.length === 0 && !isSessionActive ? (
+            <EmptyState onStartSession={handleToggleSession} />
+          ) : (
+            <MessageList
+              messages={messages}
+              onDeleteMessage={deleteMessage}
+            />
+          )}
 
-      {/* Resumed Session Banner */}
-      {resumedFromSession && (
-        <ResumedSessionBanner
-          sessionInfo={resumedFromSession}
-          onClear={clearResumeState}
-        />
-      )}
-
-      {/* Show EmptyState when no messages and session not active */}
-      {messages.length === 0 && !isSessionActive ? (
-        <EmptyState onStartSession={handleToggleSession} />
-      ) : (
-        <MessageList
-          messages={messages}
-          onDeleteMessage={deleteMessage}
-        />
-      )}
-      
-      <div className="border-t border-slate-800 bg-slate-900">
-        <div className="px-4 pt-3 pb-4 space-y-3" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
-          <ControlBar
+          {/* Conversation Control Bar */}
+          <ConversationControlBar
             isSessionActive={isSessionActive}
             isConnected={isConnected}
             isStreamError={isStreamError}
@@ -383,20 +425,15 @@ export default function ChatGPTInterface() {
             onSaveConversation={saveConversation}
             onClear={clearMessages}
             onTogglePiP={handleTogglePiP}
-          />
-
-          <MessageInput
-            isSessionActive={isSessionActive}
             onSendMessage={sendTextMessage}
           />
-
-          {isSessionActive && (
-            <div className="text-xs text-center text-slate-500">
-              🎤 Using WebRTC for ultra-low latency voice streaming
-            </div>
-          )}
-        </div>
-      </div>
+        </>
+      ) : (
+        <>
+          {/* Meeting Coach Mode - self-contained with hook, 3-panel layout, and control bar */}
+          <MeetingCoachContent onStateChange={setMeetingCoachHeaderState} />
+        </>
+      )}
       
       <TabAudioCaptureGuide
         isOpen={showTabCaptureGuide}
@@ -430,28 +467,58 @@ export default function ChatGPTInterface() {
         onClose={closePiP}
       />
 
-      {/* Session History Drawer */}
-      <SessionHistoryDrawer
-        isOpen={isHistoryDrawerOpen}
-        onClose={() => setIsHistoryDrawerOpen(false)}
-        sessions={historySessions}
-        onSelectSession={handleSelectHistorySession}
-        onDeleteSession={deleteHistorySession}
-        onClearAll={clearAllHistory}
-        storageInfo={storageInfo}
-        onResumeSession={handleResumeSession}
-        canResume={canResumeSession}
-      />
+      {/* Unified History Drawer */}
+      {currentMode === 'conversation' ? (
+        <UnifiedHistoryDrawer
+          mode="conversation"
+          isOpen={isHistoryDrawerOpen}
+          onClose={() => setIsHistoryDrawerOpen(false)}
+          sessions={historySessions}
+          onSelectSession={handleSelectHistorySession}
+          onDeleteSession={deleteHistorySession}
+          onClearAll={clearAllHistory}
+          storageInfo={storageInfo}
+          onResumeSession={handleResumeSession}
+          canResume={canResumeSession}
+        />
+      ) : (
+        <UnifiedHistoryDrawer
+          mode="meeting_coach"
+          isOpen={isHistoryDrawerOpen}
+          onClose={() => setIsHistoryDrawerOpen(false)}
+          sessions={meetingCoachHeaderState.history?.history || []}
+          onSelectSession={handleSelectMeetingSession}
+          onDeleteSession={handleDeleteMeetingSession}
+          onClearAll={handleClearMeetingHistory}
+          storageInfo={{
+            count: meetingCoachHeaderState.history?.history.length || 0,
+            maxCount: 100,
+          }}
+          onExportSession={handleExportMeetingSession}
+        />
+      )}
 
-      {/* Session History Viewer */}
-      <SessionHistoryViewer
-        isOpen={selectedHistorySession !== null}
-        onClose={() => setSelectedHistorySession(null)}
-        session={selectedHistorySession}
-        onExport={handleExportSelectedSession}
-        onResume={() => selectedHistorySession && handleResumeSession(selectedHistorySession.sessionId)}
-        canResume={canResumeSession}
-      />
+      {/* Conversation History Viewer */}
+      {currentMode === 'conversation' && (
+        <SessionHistoryViewer
+          isOpen={selectedHistorySession !== null}
+          onClose={() => setSelectedHistorySession(null)}
+          session={selectedHistorySession}
+          onExport={handleExportSelectedSession}
+          onResume={() => selectedHistorySession && handleResumeSession(selectedHistorySession.sessionId)}
+          canResume={canResumeSession}
+        />
+      )}
+
+      {/* Meeting History Viewer */}
+      {currentMode === 'meeting_coach' && (
+        <MeetingHistoryViewer
+          isOpen={selectedMeetingSession !== null}
+          onClose={() => setSelectedMeetingSession(null)}
+          session={selectedMeetingSession}
+          onExport={handleExportSelectedMeeting}
+        />
+      )}
     </div>
   )
 } 

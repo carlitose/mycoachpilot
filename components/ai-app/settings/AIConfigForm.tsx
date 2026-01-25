@@ -14,8 +14,12 @@ export default function AIConfigForm() {
     selected_template_id: null,
     selected_custom_template_id: null,
     custom_instructions: '',
+    // Meeting Coach Mode
+    deepgram_api_key: '',
+    meeting_coach_template: 'general',
+    coaching_style: 'diplomatic',
   });
-  const [mode, setMode] = useState<'conversation' | 'transcript_only'>('conversation');
+  const [mode, setMode] = useState<'conversation' | 'transcript_only' | 'meeting_coach'>('conversation');
   const [customInstructions, setCustomInstructions] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -83,6 +87,10 @@ export default function AIConfigForm() {
         selected_template_id: config.selected_template_id,
         selected_custom_template_id: config.selected_custom_template_id,
         custom_instructions: customInstructions?.trim() || null,
+        // Meeting Coach Mode configuration
+        deepgram_api_key: config.deepgram_api_key || '',
+        meeting_coach_template: config.meeting_coach_template || 'general',
+        coaching_style: config.coaching_style || 'diplomatic',
       };
 
       localStorage.setItem('ai_config', JSON.stringify(newConfig));
@@ -155,7 +163,7 @@ export default function AIConfigForm() {
                   name="mode"
                   value="conversation"
                   checked={mode === 'conversation'}
-                  onChange={(e) => setMode(e.target.value as 'conversation' | 'transcript_only')}
+                  onChange={(e) => setMode(e.target.value as 'conversation' | 'transcript_only' | 'meeting_coach')}
                   className="radio radio-primary mt-1"
                 />
                 <div className="flex-1">
@@ -173,7 +181,7 @@ export default function AIConfigForm() {
                   name="mode"
                   value="transcript_only"
                   checked={mode === 'transcript_only'}
-                  onChange={(e) => setMode(e.target.value as 'conversation' | 'transcript_only')}
+                  onChange={(e) => setMode(e.target.value as 'conversation' | 'transcript_only' | 'meeting_coach')}
                   className="radio radio-success mt-1"
                 />
                 <div className="flex-1">
@@ -185,8 +193,186 @@ export default function AIConfigForm() {
                   </p>
                 </div>
               </label>
+
+              <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-base-200"
+                     style={{ borderColor: mode === 'meeting_coach' ? 'rgb(168, 85, 247)' : 'transparent' }}>
+                <input
+                  type="radio"
+                  name="mode"
+                  value="meeting_coach"
+                  checked={mode === 'meeting_coach'}
+                  onChange={(e) => setMode(e.target.value as 'conversation' | 'transcript_only' | 'meeting_coach')}
+                  className="radio radio-secondary mt-1"
+                />
+                <div className="flex-1">
+                  <div className="font-semibold text-lg !text-gray-900 dark:!text-gray-100 flex items-center gap-2">
+                    Meeting Coach Mode
+                    <span className="badge badge-secondary badge-sm">NEW</span>
+                  </div>
+                  <p className="text-sm !text-gray-600 dark:!text-gray-400 mt-1">
+                    Real-time coaching during online meetings with speaker identification and AI suggestions.
+                  </p>
+                </div>
+              </label>
             </div>
           </div>
+
+          {/* Meeting Coach Configuration - Only visible in meeting_coach mode */}
+          {mode === 'meeting_coach' && (
+            <>
+              {/* Deepgram API Key */}
+              <div className="card bg-base-100 border border-base-300 p-6">
+                <h3 className="text-xl font-bold mb-4 !text-gray-900 dark:!text-gray-100">Deepgram API Key</h3>
+                <div className="space-y-4">
+                  <p className="text-sm !text-gray-700 dark:!text-gray-300">
+                    Enter your Deepgram API key for real-time speech transcription. Get one from <a href="https://console.deepgram.com/" target="_blank" rel="noopener noreferrer" className="link link-primary">Deepgram Console</a>.
+                  </p>
+                  <input
+                    type="password"
+                    placeholder="Enter Deepgram API key..."
+                    className="input input-bordered w-full"
+                    value={config.deepgram_api_key || ''}
+                    onChange={(e) => setConfig({ ...config, deepgram_api_key: e.target.value })}
+                  />
+                  <p className="text-xs !text-gray-500">
+                    Your key is stored locally and used for speaker diarization and transcription.
+                  </p>
+                </div>
+              </div>
+
+              {/* Coaching Template Selection */}
+              <div className="card bg-base-100 border border-base-300 p-6">
+                <h3 className="text-xl font-bold mb-4 !text-gray-900 dark:!text-gray-100">Coaching Template</h3>
+                <div className="space-y-3">
+                  <p className="text-sm !text-gray-700 dark:!text-gray-300 mb-4">
+                    Select the type of coaching you need during your meetings.
+                  </p>
+
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-base-200"
+                         style={{ borderColor: config.meeting_coach_template === 'general' ? 'rgb(59, 130, 246)' : 'transparent' }}>
+                    <input
+                      type="radio"
+                      name="coaching_template"
+                      value="general"
+                      checked={config.meeting_coach_template === 'general'}
+                      onChange={(e) => setConfig({ ...config, meeting_coach_template: e.target.value })}
+                      className="radio radio-primary mt-1"
+                    />
+                    <div>
+                      <div className="font-semibold !text-gray-900 dark:!text-gray-100">General Meeting Coach</div>
+                      <p className="text-sm !text-gray-600 dark:!text-gray-400">Balanced coaching for any type of meeting</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-base-200"
+                         style={{ borderColor: config.meeting_coach_template === 'interview' ? 'rgb(59, 130, 246)' : 'transparent' }}>
+                    <input
+                      type="radio"
+                      name="coaching_template"
+                      value="interview"
+                      checked={config.meeting_coach_template === 'interview'}
+                      onChange={(e) => setConfig({ ...config, meeting_coach_template: e.target.value })}
+                      className="radio radio-primary mt-1"
+                    />
+                    <div>
+                      <div className="font-semibold !text-gray-900 dark:!text-gray-100">Interview Coach</div>
+                      <p className="text-sm !text-gray-600 dark:!text-gray-400">Help ace job interviews with STAR method</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-base-200"
+                         style={{ borderColor: config.meeting_coach_template === 'sales' ? 'rgb(59, 130, 246)' : 'transparent' }}>
+                    <input
+                      type="radio"
+                      name="coaching_template"
+                      value="sales"
+                      checked={config.meeting_coach_template === 'sales'}
+                      onChange={(e) => setConfig({ ...config, meeting_coach_template: e.target.value })}
+                      className="radio radio-primary mt-1"
+                    />
+                    <div>
+                      <div className="font-semibold !text-gray-900 dark:!text-gray-100">Sales Coach</div>
+                      <p className="text-sm !text-gray-600 dark:!text-gray-400">Overcome objections and close deals</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-base-200"
+                         style={{ borderColor: config.meeting_coach_template === 'presentation' ? 'rgb(59, 130, 246)' : 'transparent' }}>
+                    <input
+                      type="radio"
+                      name="coaching_template"
+                      value="presentation"
+                      checked={config.meeting_coach_template === 'presentation'}
+                      onChange={(e) => setConfig({ ...config, meeting_coach_template: e.target.value })}
+                      className="radio radio-primary mt-1"
+                    />
+                    <div>
+                      <div className="font-semibold !text-gray-900 dark:!text-gray-100">Presentation Coach</div>
+                      <p className="text-sm !text-gray-600 dark:!text-gray-400">Deliver impactful presentations</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Coaching Style Selection */}
+              <div className="card bg-base-100 border border-base-300 p-6">
+                <h3 className="text-xl font-bold mb-4 !text-gray-900 dark:!text-gray-100">Coaching Style</h3>
+                <div className="space-y-3">
+                  <p className="text-sm !text-gray-700 dark:!text-gray-300 mb-4">
+                    Choose how the AI coach communicates suggestions to you.
+                  </p>
+
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-base-200"
+                         style={{ borderColor: config.coaching_style === 'diplomatic' ? 'rgb(168, 85, 247)' : 'transparent' }}>
+                    <input
+                      type="radio"
+                      name="coaching_style"
+                      value="diplomatic"
+                      checked={config.coaching_style === 'diplomatic'}
+                      onChange={(e) => setConfig({ ...config, coaching_style: e.target.value })}
+                      className="radio radio-secondary mt-1"
+                    />
+                    <div>
+                      <div className="font-semibold !text-gray-900 dark:!text-gray-100">Diplomatic</div>
+                      <p className="text-sm !text-gray-600 dark:!text-gray-400">Gentle, encouraging suggestions (&quot;Consider...&quot;)</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-base-200"
+                         style={{ borderColor: config.coaching_style === 'assertive' ? 'rgb(168, 85, 247)' : 'transparent' }}>
+                    <input
+                      type="radio"
+                      name="coaching_style"
+                      value="assertive"
+                      checked={config.coaching_style === 'assertive'}
+                      onChange={(e) => setConfig({ ...config, coaching_style: e.target.value })}
+                      className="radio radio-secondary mt-1"
+                    />
+                    <div>
+                      <div className="font-semibold !text-gray-900 dark:!text-gray-100">Assertive</div>
+                      <p className="text-sm !text-gray-600 dark:!text-gray-400">Direct, action-oriented (&quot;Try this...&quot;)</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-base-200"
+                         style={{ borderColor: config.coaching_style === 'analytical' ? 'rgb(168, 85, 247)' : 'transparent' }}>
+                    <input
+                      type="radio"
+                      name="coaching_style"
+                      value="analytical"
+                      checked={config.coaching_style === 'analytical'}
+                      onChange={(e) => setConfig({ ...config, coaching_style: e.target.value })}
+                      className="radio radio-secondary mt-1"
+                    />
+                    <div>
+                      <div className="font-semibold !text-gray-900 dark:!text-gray-100">Analytical</div>
+                      <p className="text-sm !text-gray-600 dark:!text-gray-400">Data-driven, logical reasoning (&quot;Research shows...&quot;)</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Template Selection - Only visible in conversation mode */}
           {mode === 'conversation' && (
