@@ -1,7 +1,32 @@
 /**
- * Settings Bounded Context
- * Responsible for user configuration and API keys management
+ * Settings bounded context
+ * Manages user configuration and API keys
  */
 
-// Placeholder - entities, value objects, and domain events will be added here
-export {};
+// Value Objects
+export {
+  ApiKey,
+  TemplateId,
+  CoachingStyle,
+} from './valueObjects';
+export type {
+  ApiKeyService,
+  ApiKeyProps,
+  PredefinedTemplateId,
+  CoachingStyleType,
+} from './valueObjects';
+
+// Entities
+export {
+  UserConfig,
+  Template,
+  PREDEFINED_TEMPLATES,
+} from './entities';
+export type {
+  UserConfigProps,
+  TemplateProps,
+} from './entities';
+
+// Events
+export { ConfigUpdated } from './events';
+export type { ConfigUpdatedPayload } from './events';

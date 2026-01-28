@@ -33,53 +33,48 @@ export default tseslint.config(
       },
       'boundaries/include': ['src/**/*'],
       'boundaries/elements': [
+        // Order matters: more specific patterns (outer layers) first
+        // to prevent false matches on folder names like "session" or "settings"
         {
-          type: 'shared',
-          pattern: 'shared',
-          basePattern: 'src/domain',
-          mode: 'folder',
-        },
-        {
-          type: 'domain-session',
-          pattern: 'session',
-          basePattern: 'src/domain',
-          mode: 'folder',
-        },
-        {
-          type: 'domain-transcript',
-          pattern: 'transcript',
-          basePattern: 'src/domain',
-          mode: 'folder',
-        },
-        {
-          type: 'domain-coaching',
-          pattern: 'coaching',
-          basePattern: 'src/domain',
-          mode: 'folder',
-        },
-        {
-          type: 'domain-settings',
-          pattern: 'settings',
-          basePattern: 'src/domain',
-          mode: 'folder',
-        },
-        {
-          type: 'application',
-          pattern: '*',
-          basePattern: 'src/application',
-          mode: 'folder',
+          type: 'presentation',
+          pattern: 'src/presentation',
+          mode: 'full',
         },
         {
           type: 'infrastructure',
-          pattern: '*',
-          basePattern: 'src/infrastructure',
-          mode: 'folder',
+          pattern: 'src/infrastructure',
+          mode: 'full',
         },
         {
-          type: 'presentation',
-          pattern: '*',
-          basePattern: 'src/presentation',
-          mode: 'folder',
+          type: 'application',
+          pattern: 'src/application',
+          mode: 'full',
+        },
+        // Domain layer contexts (innermost layer)
+        {
+          type: 'shared',
+          pattern: 'src/domain/shared',
+          mode: 'full',
+        },
+        {
+          type: 'domain-session',
+          pattern: 'src/domain/session',
+          mode: 'full',
+        },
+        {
+          type: 'domain-transcript',
+          pattern: 'src/domain/transcript',
+          mode: 'full',
+        },
+        {
+          type: 'domain-coaching',
+          pattern: 'src/domain/coaching',
+          mode: 'full',
+        },
+        {
+          type: 'domain-settings',
+          pattern: 'src/domain/settings',
+          mode: 'full',
         },
       ],
     },

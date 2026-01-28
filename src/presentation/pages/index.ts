@@ -1,7 +1,8 @@
 /**
  * Presentation Pages
- * Page-level React components
+ * Main application pages
  */
 
-// Placeholder - pages will be exported here
-export {};
+export { MainPage } from './MainPage';
+export { SettingsPage } from './SettingsPage';
+export { HistoryPage } from './HistoryPage';

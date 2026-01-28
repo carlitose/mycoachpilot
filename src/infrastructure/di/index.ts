@@ -3,5 +3,16 @@
  * Wires up adapters to ports
  */
 
-// Placeholder - DI container will be configured here
-export {};
+export {
+  getEventBus,
+  getAudioCapture,
+  getRealtimeConnection,
+  getTranscription,
+  getSessionRepository,
+  getConfigRepository,
+  getSessionManager,
+  resetContainer,
+} from './container';
+
+export { ContainerProvider, useContainer } from './ContainerProvider';
+export type { ServiceContainer } from './ContainerProvider';

@@ -1,7 +1,38 @@
 /**
- * Transcript Bounded Context
- * Responsible for real-time transcription and speaker management
+ * Transcript bounded context
+ * Manages real-time transcription and speaker identification
  */
 
-// Placeholder - entities, value objects, and domain events will be added here
-export {};
+// Value Objects
+export {
+  MessageId,
+  MessageRole,
+  SpeakerId,
+  Timestamp,
+} from './valueObjects';
+export type { MessageRoleType } from './valueObjects';
+
+// Entities
+export {
+  Message,
+  Speaker,
+  TranscriptSegment,
+} from './entities';
+export type {
+  MessageProps,
+  SpeakerProps,
+  TranscriptSegmentProps,
+  Word,
+} from './entities';
+
+// Events
+export {
+  MessageReceived,
+  SegmentReceived,
+  SpeakerIdentified,
+} from './events';
+export type {
+  MessageReceivedPayload,
+  SegmentReceivedPayload,
+  SpeakerIdentifiedPayload,
+} from './events';

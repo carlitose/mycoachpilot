@@ -27,6 +27,26 @@ export class SessionError extends DomainError {
   ) {
     super(message);
   }
+
+  static audioCaptureFailed(message = 'Failed to capture audio'): SessionError {
+    return new SessionError('AudioCaptureFailed', message);
+  }
+
+  static transcriptionFailed(message = 'Transcription failed'): SessionError {
+    return new SessionError('TranscriptionFailed', message);
+  }
+
+  static invalidConfiguration(message = 'Invalid session configuration'): SessionError {
+    return new SessionError('InvalidConfiguration', message);
+  }
+
+  static sessionNotFound(message = 'Session not found'): SessionError {
+    return new SessionError('SessionNotFound', message);
+  }
+
+  static sessionAlreadyRunning(message = 'Session is already running'): SessionError {
+    return new SessionError('SessionAlreadyRunning', message);
+  }
 }
 
 /**

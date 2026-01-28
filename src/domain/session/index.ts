@@ -1,7 +1,29 @@
 /**
- * Session Bounded Context
- * Responsible for coaching session lifecycle management
+ * Session bounded context
+ * Manages coaching session lifecycle
  */
 
-// Placeholder - entities, value objects, and domain events will be added here
-export {};
+// Value Objects
+export {
+  SessionId,
+  SessionMode,
+  SessionStatus,
+  AudioConfig,
+} from './valueObjects';
+export type {
+  SessionModeType,
+  SessionStatusType,
+  AudioConfigProps,
+} from './valueObjects';
+
+// Entities
+export { Session } from './entities';
+export type { SessionProps } from './entities';
+
+// Events
+export { SessionStarted, SessionStopped, SessionPaused } from './events';
+export type {
+  SessionStartedPayload,
+  SessionStoppedPayload,
+  SessionPausedPayload,
+} from './events';

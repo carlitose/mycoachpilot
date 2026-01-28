@@ -3,6 +3,38 @@
  * Entry points for application logic
  */
 
-// Placeholder - use cases will be defined here
-// Examples: StartSession, StopSession, GetCoachingSuggestions
-export {};
+// Session use cases
+export {
+  StartSessionUseCase,
+  StopSessionUseCase,
+  PauseSessionUseCase,
+  ResumeSessionUseCase,
+} from './session';
+export type {
+  StartSessionInput,
+  StartSessionOutput,
+  StopSessionInput,
+  StopSessionOutput,
+} from './session';
+
+// Settings use cases
+export {
+  SaveConfigUseCase,
+  LoadConfigUseCase,
+} from './settings';
+export type {
+  SaveConfigInput,
+  LoadConfigOutput,
+} from './settings';
+
+// Transcript use cases
+export {
+  ExportTranscriptUseCase,
+  ClearTranscriptUseCase,
+} from './transcript';
+export type {
+  ExportTranscriptInput,
+  ExportTranscriptOutput,
+  ExportFormat,
+  ClearTranscriptInput,
+} from './transcript';

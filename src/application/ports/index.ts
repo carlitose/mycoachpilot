@@ -3,6 +3,47 @@
  * Interfaces for external service adapters (Hexagonal Architecture)
  */
 
-// Placeholder - port interfaces will be defined here
-// Examples: TranscriptionPort, AudioCapturePort, SuggestionGeneratorPort
-export {};
+export type { EventBusPort } from './EventBusPort';
+
+export type {
+  AudioCapturePort,
+  AudioCaptureState,
+  AudioSourceType,
+  AudioDataEvent,
+  AudioLevelEvent,
+  AudioEvent,
+  AudioEventHandler,
+} from './AudioCapturePort';
+
+export type {
+  RealtimeConnectionPort,
+  RealtimeConnectionState,
+  RealtimeConfig,
+  TranscriptEvent,
+  AudioResponseEvent,
+  ResponseTextEvent,
+  ErrorEvent as RealtimeErrorEvent,
+  ConnectionStateEvent,
+  RealtimeEvent,
+  RealtimeEventHandler,
+} from './RealtimeConnectionPort';
+
+export type {
+  TranscriptionPort,
+  TranscriptionState,
+  TranscriptionConfig,
+  TranscriptSegmentEvent,
+  TranscriptionErrorEvent,
+  TranscriptionStateEvent,
+  TranscriptionEvent,
+  TranscriptionEventHandler,
+} from './TranscriptionPort';
+
+export type {
+  SessionRepositoryPort,
+  SessionHistoryEntry,
+} from './SessionRepositoryPort';
+
+export type {
+  ConfigRepositoryPort,
+} from './ConfigRepositoryPort';

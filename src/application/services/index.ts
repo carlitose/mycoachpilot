@@ -3,6 +3,8 @@
  * Domain services that orchestrate complex operations
  */
 
-// Placeholder - services will be defined here
-// Examples: SessionManager, CoachingEngine
-export {};
+export { SessionManager } from './SessionManager';
+export type { SessionManagerDependencies, SessionState } from './SessionManager';
+
+export { CoachingEngine } from './CoachingEngine';
+export type { CoachingEngineConfig, CoachingContext } from './CoachingEngine';
