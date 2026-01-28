@@ -1,147 +1,299 @@
-import { useCallback, type ReactNode } from 'react';
+import { Play, Pause, Square, Circle, Mic, MonitorSpeaker, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 
-import type { SessionModeType } from '@domain/session';
-
+import { Alert, AlertDescription } from '@presentation/components/ui/alert';
+import { Button } from '@presentation/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@presentation/components/ui/dialog';
+import { Input } from '@presentation/components/ui/input';
+import { Label } from '@presentation/components/ui/label';
+import { Switch } from '@presentation/components/ui/switch';
 import { useSession, useSettings } from '@presentation/hooks';
+import { cn } from '@presentation/lib/utils';
 
-import { Button } from '../common';
+import { AudioVisualizer } from './AudioVisualizer';
 
 interface SessionControlsProps {
-  mode: SessionModeType;
-  templateId?: string | undefined;
-  systemPrompt?: string | undefined;
-  captureTabAudio?: boolean | undefined;
+  onOpenSettings: () => void;
 }
 
-export function SessionControls({ mode, templateId, systemPrompt, captureTabAudio = false }: SessionControlsProps): ReactNode {
+export function SessionControls({ onOpenSettings }: SessionControlsProps): React.JSX.Element {
   const {
     isActive,
     isPaused,
     isConnecting,
+    isConnected,
+    audioLevel,
+    currentSession,
+    error,
     startSession,
     stopSession,
     pauseSession,
     resumeSession,
-    isMuted,
-    setMuted,
   } = useSession();
 
-  const { hasOpenaiKey, hasDeepgramKey } = useSettings();
+  const { hasDeepgramKey } = useSettings();
 
-  const canStart = mode === 'meeting_coach'
-    ? hasDeepgramKey
-    : mode === 'conversation'
-      ? hasOpenaiKey
-      : hasOpenaiKey || hasDeepgramKey;
+  const [showNameDialog, setShowNameDialog] = useState(false);
+  const [sessionName, setSessionName] = useState('');
+  const [includeTabAudio, setIncludeTabAudio] = useState(false);
+  const [duration, setDuration] = useState(0);
 
-  const handleStart = useCallback(async () => {
+  const sessionStatus = isActive ? (isPaused ? 'paused' : 'recording') : 'idle';
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (sessionStatus === 'recording' && currentSession) {
+      const startTime = currentSession.startedAt ? new Date(currentSession.startedAt).getTime() : Date.now();
+      interval = setInterval(() => {
+        setDuration(Date.now() - startTime);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [sessionStatus, currentSession]);
+
+  const formatDuration = (ms: number): string => {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    return `${hours.toString().padStart(2, '0')}:${(minutes % 60)
+      .toString()
+      .padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+  };
+
+  const handleStart = (): void => {
+    if (!hasDeepgramKey) {
+      onOpenSettings();
+      return;
+    }
+    setShowNameDialog(true);
+  };
+
+  const handleConfirmStart = useCallback(async () => {
+    if (!sessionName.trim()) return;
+
     await startSession({
-      mode,
-      ...(templateId !== undefined ? { templateId } : {}),
-      ...(systemPrompt !== undefined ? { systemPrompt } : {}),
+      mode: 'meeting_coach',
       audioConfig: {
         micEnabled: true,
-        tabAudioEnabled: captureTabAudio,
-        sampleRate: mode === 'meeting_coach' ? 16000 : 24000,
+        tabAudioEnabled: includeTabAudio,
+        sampleRate: 16000,
       },
     });
-  }, [mode, templateId, systemPrompt, captureTabAudio, startSession]);
+
+    setShowNameDialog(false);
+    setSessionName('');
+    setDuration(0);
+  }, [sessionName, includeTabAudio, startSession]);
+
+  const handlePause = useCallback(() => {
+    pauseSession();
+  }, [pauseSession]);
+
+  const handleResume = useCallback(() => {
+    resumeSession();
+  }, [resumeSession]);
 
   const handleStop = useCallback(() => {
     stopSession();
+    setDuration(0);
   }, [stopSession]);
 
-  const handlePauseResume = useCallback(() => {
-    if (isPaused) {
-      resumeSession();
-    } else {
-      pauseSession();
-    }
-  }, [isPaused, pauseSession, resumeSession]);
-
-  const handleMuteToggle = useCallback(() => {
-    setMuted(!isMuted);
-  }, [isMuted, setMuted]);
-
-  if (!isActive) {
-    return (
-      <div className="flex items-center gap-3">
-        <Button
-          onClick={() => { void handleStart(); }}
-          disabled={!canStart || isConnecting}
-          isLoading={isConnecting}
-          size="lg"
-          className="gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
-          Start Session
-        </Button>
-        {!canStart && (
-          <span className="text-sm text-amber-600 dark:text-amber-400">
-            Please configure API keys in Settings
-          </span>
-        )}
-      </div>
-    );
-  }
+  const hasError = error?.message;
 
   return (
-    <div className="flex items-center gap-3">
-      <Button
-        onClick={handleStop}
-        variant="danger"
-        size="lg"
-        className="gap-2"
-      >
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-          <rect x="6" y="6" width="12" height="12" rx="2" />
-        </svg>
-        Stop
-      </Button>
-
-      <Button
-        onClick={handlePauseResume}
-        variant="secondary"
-        size="lg"
-        className="gap-2"
-      >
-        {isPaused ? (
-          <>
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <polygon points="5,3 19,12 5,21" />
-            </svg>
-            Resume
-          </>
-        ) : (
-          <>
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <rect x="6" y="4" width="4" height="16" rx="1" />
-              <rect x="14" y="4" width="4" height="16" rx="1" />
-            </svg>
-            Pause
-          </>
+    <>
+      <div className="flex flex-col gap-4">
+        {hasError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error.message}
+            </AlertDescription>
+          </Alert>
         )}
-      </Button>
 
-      <Button
-        onClick={handleMuteToggle}
-        variant="ghost"
-        size="lg"
-        className={isMuted ? 'text-red-500' : ''}
-      >
-        {isMuted ? (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-          </svg>
-        ) : (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
-        )}
-      </Button>
-    </div>
+        <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm md:gap-6">
+          {/* Recording Indicator */}
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                'flex h-3 w-3 rounded-full',
+                sessionStatus === 'recording' && 'animate-pulse bg-destructive',
+                sessionStatus === 'paused' && 'bg-warning',
+                sessionStatus === 'idle' && 'bg-muted'
+              )}
+            />
+            <span className="text-sm font-medium text-muted-foreground">
+              {sessionStatus === 'recording' && 'Recording'}
+              {sessionStatus === 'paused' && 'Paused'}
+              {sessionStatus === 'idle' && 'Ready'}
+            </span>
+          </div>
+
+          {/* Audio Level */}
+          {sessionStatus === 'recording' && (
+            <AudioVisualizer
+              level={audioLevel}
+              isActive={isConnected}
+            />
+          )}
+
+          {/* Duration */}
+          {currentSession && (
+            <div className="font-mono text-2xl font-semibold text-foreground">
+              {formatDuration(duration)}
+            </div>
+          )}
+
+          {/* Controls */}
+          <div className="flex items-center gap-2">
+            {sessionStatus === 'idle' ? (
+              <Button
+                onClick={handleStart}
+                disabled={isConnecting}
+                className="gap-2 bg-primary hover:bg-primary/90"
+              >
+                <Circle className="h-4 w-4 fill-current" />
+                Start Session
+              </Button>
+            ) : (
+              <>
+                {sessionStatus === 'recording' ? (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handlePause}
+                    className="h-10 w-10 bg-transparent"
+                  >
+                    <Pause className="h-5 w-5" />
+                    <span className="sr-only">Pause</span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleResume}
+                    className="h-10 w-10 bg-transparent"
+                  >
+                    <Play className="h-5 w-5" />
+                    <span className="sr-only">Resume</span>
+                  </Button>
+                )}
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={handleStop}
+                  className="h-10 w-10"
+                >
+                  <Square className="h-4 w-4 fill-current" />
+                  <span className="sr-only">Stop</span>
+                </Button>
+              </>
+            )}
+          </div>
+
+          {/* Connection Status */}
+          {sessionStatus !== 'idle' && (
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <Mic className={cn('h-4 w-4', isActive && 'text-primary')} />
+                <span className="sr-only">Microphone</span>
+              </div>
+              {includeTabAudio && (
+                <div className="flex items-center gap-1.5">
+                  <MonitorSpeaker className="h-4 w-4 text-primary" />
+                  <span className="sr-only">Tab Audio</span>
+                </div>
+              )}
+              <div
+                className={cn(
+                  'h-2 w-2 rounded-full',
+                  isConnected ? 'bg-success' : 'bg-warning'
+                )}
+              />
+            </div>
+          )}
+
+          {/* Session Name */}
+          {currentSession && (
+            <div className="ml-auto text-right">
+              <p className="text-sm font-medium text-foreground">
+                {sessionName || 'Coaching Session'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Started at{' '}
+                {currentSession.startedAt
+                  ? new Date(currentSession.startedAt).toLocaleTimeString()
+                  : new Date().toLocaleTimeString()}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Dialog open={showNameDialog} onOpenChange={setShowNameDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Coaching Session</DialogTitle>
+            <DialogDescription>
+              Give your session a name and configure audio sources
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="session-name">Session Name</Label>
+              <Input
+                id="session-name"
+                placeholder="e.g., Sales Call with Client X"
+                value={sessionName}
+                onChange={(e) => { setSessionName(e.target.value); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleConfirmStart();
+                }}
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-border p-4">
+              <div className="flex items-center gap-3">
+                <MonitorSpeaker className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Include Tab Audio</p>
+                  <p className="text-xs text-muted-foreground">
+                    Capture audio from your browser tab (e.g., Zoom, Meet)
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={includeTabAudio}
+                onCheckedChange={setIncludeTabAudio}
+              />
+            </div>
+
+            <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+              <Mic className="h-4 w-4 shrink-0" />
+              <span>Your microphone will always be captured</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowNameDialog(false); }}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleConfirmStart()} disabled={!sessionName.trim()}>
+              Start Recording
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

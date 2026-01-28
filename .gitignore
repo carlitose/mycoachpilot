@@ -52,3 +52,4 @@ public/fallback-*.js.map
 # Build output
 dist/
 dist-node/
+my-coach-pilot-coaching-app/
