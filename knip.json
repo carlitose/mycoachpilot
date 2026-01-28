@@ -10,5 +10,10 @@
     "**/*.d.ts"
   ],
   "ignoreDependencies": [],
-  "ignoreBinaries": ["tsr"]
+  "ignoreBinaries": [],
+  "ignoreExportsUsedInFile": true,
+  "rules": {
+    "exports": "warn",
+    "types": "warn"
+  }
 }
