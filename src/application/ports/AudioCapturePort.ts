@@ -24,7 +24,12 @@ export interface AudioLevelEvent {
   timestamp: number;
 }
 
-export type AudioEvent = AudioDataEvent | AudioLevelEvent;
+export interface AudioEndedEvent {
+  type: 'ended';
+  timestamp: number;
+}
+
+export type AudioEvent = AudioDataEvent | AudioLevelEvent | AudioEndedEvent;
 export type AudioEventHandler = (event: AudioEvent) => void;
 
 /**

@@ -53,11 +53,31 @@ export async function startSession(
     }
   });
 
+  // Finalize audio when file audio ends (for file-based input)
+  container.audioCapture.onAudioEvent((event) => {
+    if (event.type === 'ended') {
+      // For conversation/transcript_only modes (OpenAI Realtime)
+      container.realtimeConnection.commitAudioBuffer();
+      // Trigger response for conversation mode (VAD may not detect end-of-speech from file)
+      if (options.mode === 'conversation') {
+        container.realtimeConnection.triggerResponse();
+      }
+      // For meeting_coach mode (Deepgram)
+      container.transcription.finalize();
+    }
+  });
+
   // Subscribe to realtime events for conversation/transcript modes
   container.realtimeConnection.onEvent((event) => {
     if (event.type === 'transcript' && event.isFinal) {
       const prefix = event.role === 'user' ? chalk.blue('You') : chalk.magenta('AI');
       process.stdout.write(`${prefix}: ${event.text}\n`);
+    } else if (event.type === 'response_text') {
+      // Only show interim results for streaming feedback
+      // Final text is shown via 'transcript' event with AI: prefix
+      if (!event.isFinal) {
+        process.stdout.write(chalk.gray(`  ... ${event.text}\r`));
+      }
     } else if (event.type === 'error') {
       process.stderr.write(chalk.red(`Realtime error: ${event.message}\n`));
     }

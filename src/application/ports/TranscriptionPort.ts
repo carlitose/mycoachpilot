@@ -72,6 +72,12 @@ export interface TranscriptionPort {
   sendAudio(audio: Int16Array): void;
 
   /**
+   * Signal that audio input has finished (for file-based input)
+   * Triggers finalization of any pending transcription without disconnecting
+   */
+  finalize(): void;
+
+  /**
    * Subscribe to transcription events
    * @returns Unsubscribe function
    */

@@ -113,6 +113,12 @@ export class NodeDeepgramAdapter implements TranscriptionPort {
     this.ws.send(Buffer.from(audio.buffer));
   }
 
+  finalize(): void {
+    if (!this.ws || this.state !== 'connected') return;
+    // Send CloseStream to get final transcription results
+    this.ws.send(JSON.stringify({ type: 'CloseStream' }));
+  }
+
   onEvent(handler: TranscriptionEventHandler): () => void {
     this.eventHandlers.add(handler);
     return () => { this.eventHandlers.delete(handler); };

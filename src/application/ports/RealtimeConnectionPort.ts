@@ -85,6 +85,12 @@ export interface RealtimeConnectionPort {
   sendAudio(audio: Int16Array): void;
 
   /**
+   * Commit the audio buffer to trigger transcription
+   * Call this when audio input is complete (e.g., file ended)
+   */
+  commitAudioBuffer(): void;
+
+  /**
    * Send a text message to the API
    */
   sendText(text: string): Promise<Result<void, Error>>;

@@ -40,6 +40,7 @@ describe('SessionManager', () => {
       connect: vi.fn().mockResolvedValue(ok(undefined)),
       disconnect: vi.fn(),
       sendAudio: vi.fn(),
+      commitAudioBuffer: vi.fn(),
       sendText: vi.fn().mockResolvedValue(ok(undefined)),
       triggerResponse: vi.fn(),
       cancelResponse: vi.fn(),
@@ -52,6 +53,7 @@ describe('SessionManager', () => {
       connect: vi.fn().mockResolvedValue(ok(undefined)),
       disconnect: vi.fn(),
       sendAudio: vi.fn(),
+      finalize: vi.fn(),
       onEvent: vi.fn().mockReturnValue(() => {}),
     };
 

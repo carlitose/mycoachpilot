@@ -117,6 +117,11 @@ export class OpenAIRealtimeAdapter implements RealtimeConnectionPort {
     });
   }
 
+  commitAudioBuffer(): void {
+    if (!this.ws || this.state !== 'connected') return;
+    this.send({ type: 'input_audio_buffer.commit' });
+  }
+
   sendText(text: string): Promise<Result<void, Error>> {
     if (!this.ws || this.state !== 'connected') {
       return Promise.resolve(err(new Error('Not connected')));
