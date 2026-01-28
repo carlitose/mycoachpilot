@@ -1,9 +1,11 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-confusing-void-expression */
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-confusing-void-expression, max-lines */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+import type { CoachingStyleType } from '@domain/settings';
 import { ok, err } from '@domain/shared';
 
 import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, TranscriptionPort } from '../../ports';
+import { CoachingEngine } from '../CoachingEngine';
 import { SessionManager, SessionManagerDependencies } from '../SessionManager';
 
 describe('SessionManager', () => {
@@ -361,6 +363,130 @@ describe('SessionManager', () => {
       manager.dispose();
 
       expect(mockAudioCapture.stop).toHaveBeenCalled();
+    });
+  });
+
+  describe('CoachingEngine integration', () => {
+    it('should accept optional CoachingEngine in dependencies', () => {
+      const mockCoachingEngine = new CoachingEngine(mockEventBus, {
+        sessionId: 'test-session',
+        coachingStyle: 'diplomatic' as CoachingStyleType,
+        templateSystemPrompt: 'Test prompt',
+        userSpeakerId: null,
+      });
+
+      const managerWithCoaching = new SessionManager({
+        ...deps,
+        coachingEngine: mockCoachingEngine,
+      });
+
+      expect(managerWithCoaching).toBeDefined();
+    });
+
+    it('should configure CoachingEngine when starting meeting_coach mode with openaiApiKey', async () => {
+      const mockCoachingEngine = new CoachingEngine(mockEventBus, {
+        sessionId: '',
+        coachingStyle: 'diplomatic' as CoachingStyleType,
+        templateSystemPrompt: '',
+        userSpeakerId: null,
+      });
+      const updateConfigSpy = vi.spyOn(mockCoachingEngine, 'updateConfig');
+      const setGeneratorSpy = vi.spyOn(mockCoachingEngine, 'setSuggestionGenerator');
+
+      const managerWithCoaching = new SessionManager({
+        ...deps,
+        coachingEngine: mockCoachingEngine,
+      });
+
+      await managerWithCoaching.startSession('meeting_coach', {
+        deepgramApiKey: 'dg-test-key-32-characters-long!!',
+        openaiApiKey: 'sk-test-key',
+        coachingStyle: 'assertive',
+        templateSystemPrompt: 'Be helpful',
+      });
+
+      expect(updateConfigSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          coachingStyle: 'assertive',
+          templateSystemPrompt: 'Be helpful',
+        }),
+      );
+      expect(setGeneratorSpy).toHaveBeenCalled();
+    });
+
+    it('should not configure CoachingEngine when openaiApiKey is missing', async () => {
+      const mockCoachingEngine = new CoachingEngine(mockEventBus, {
+        sessionId: '',
+        coachingStyle: 'diplomatic' as CoachingStyleType,
+        templateSystemPrompt: '',
+        userSpeakerId: null,
+      });
+      const setGeneratorSpy = vi.spyOn(mockCoachingEngine, 'setSuggestionGenerator');
+
+      const managerWithCoaching = new SessionManager({
+        ...deps,
+        coachingEngine: mockCoachingEngine,
+      });
+
+      await managerWithCoaching.startSession('meeting_coach', {
+        deepgramApiKey: 'dg-test-key-32-characters-long!!',
+      });
+
+      expect(setGeneratorSpy).not.toHaveBeenCalled();
+    });
+
+    it('should call CoachingEngine.processSegment when final segment arrives', async () => {
+      const mockCoachingEngine = new CoachingEngine(mockEventBus, {
+        sessionId: 'test-session',
+        coachingStyle: 'diplomatic' as CoachingStyleType,
+        templateSystemPrompt: 'Test prompt',
+        userSpeakerId: null,
+      });
+      const processSegmentSpy = vi.spyOn(mockCoachingEngine, 'processSegment').mockResolvedValue(null);
+
+      const managerWithCoaching = new SessionManager({
+        ...deps,
+        coachingEngine: mockCoachingEngine,
+      });
+
+      await managerWithCoaching.startSession('meeting_coach', {
+        deepgramApiKey: 'dg-test-key-32-characters-long!!',
+        openaiApiKey: 'sk-test-key',
+      });
+
+      // Simulate a transcription event callback
+      const transcriptionCallback = (mockTranscription.onEvent as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as
+        | ((event: {
+            type: string;
+            speakerId: number;
+            text: string;
+            startMs: number;
+            endMs: number;
+            confidence: number;
+            words: string[];
+            isFinal: boolean;
+          }) => void)
+        | undefined;
+
+      if (transcriptionCallback) {
+        transcriptionCallback({
+          type: 'segment',
+          speakerId: 0,
+          text: 'Hello, how are you?',
+          startMs: 0,
+          endMs: 1000,
+          confidence: 0.95,
+          words: ['Hello,', 'how', 'are', 'you?'],
+          isFinal: true,
+        });
+
+        // Give time for async processSegment to be called
+        await new Promise((resolve) => {
+          setTimeout(resolve, 10);
+        });
+
+        expect(processSegmentSpy).toHaveBeenCalled();
+      }
     });
   });
 });

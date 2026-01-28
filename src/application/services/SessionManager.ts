@@ -1,16 +1,22 @@
+/* eslint-disable max-lines */
+// SessionManager is a central orchestrator coordinating multiple services
 import { Session, SessionModeType, AudioConfigProps } from '@domain/session';
+import type { CoachingStyleType } from '@domain/settings';
 import { Result, ok, err, SessionError, DomainEvent } from '@domain/shared';
 import { Message, TranscriptSegment, Speaker, MessageProps, TranscriptSegmentProps, SpeakerProps } from '@domain/transcript';
 
 import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, TranscriptionPort, RealtimeConfig, TranscriptionConfig } from '../ports';
 
-import { handleRealtimeEvent, handleTranscriptionEvent, float32ToPCM16 } from './SessionEventHandlers';
+import type { CoachingEngine } from './CoachingEngine';
+import { createSuggestionGeneratorFn, handleTranscriptionWithCoaching } from './CoachingIntegration';
+import { handleRealtimeEvent, float32ToPCM16 } from './SessionEventHandlers';
 
 export interface SessionManagerDependencies {
   eventBus: EventBusPort;
   audioCapture: AudioCapturePort;
   realtimeConnection: RealtimeConnectionPort;
   transcription: TranscriptionPort;
+  coachingEngine?: CoachingEngine;
 }
 
 export interface SessionState {
@@ -63,6 +69,8 @@ export class SessionManager {
       openaiApiKey?: string;
       deepgramApiKey?: string;
       systemPrompt?: string;
+      coachingStyle?: CoachingStyleType;
+      templateSystemPrompt?: string;
     } = {},
   ): Promise<Result<Session, Error>> {
     if (this._state.session?.status.isActive()) {
@@ -203,11 +211,37 @@ export class SessionManager {
   }
 
   private async setupMeetingCoachMode(
-    _session: Session,
-    options: { deepgramApiKey?: string; audioConfig?: Partial<AudioConfigProps> },
+    session: Session,
+    options: {
+      deepgramApiKey?: string;
+      audioConfig?: Partial<AudioConfigProps>;
+      openaiApiKey?: string;
+      coachingStyle?: CoachingStyleType;
+      templateSystemPrompt?: string;
+    },
   ): Promise<Result<void, Error>> {
     if (!options.deepgramApiKey) {
       return err(SessionError.invalidConfiguration('Deepgram API key is required for meeting coach mode'));
+    }
+
+    // Configure CoachingEngine if available and openaiApiKey is provided
+    if (this.deps.coachingEngine && options.openaiApiKey) {
+      const coachingStyle = options.coachingStyle ?? 'diplomatic';
+      const templateSystemPrompt = options.templateSystemPrompt ?? 'You are a helpful meeting coach.';
+
+      this.deps.coachingEngine.updateConfig({
+        sessionId: session.id.toString(),
+        coachingStyle,
+        templateSystemPrompt,
+      });
+
+      // Create and set suggestion generator
+      const generator = createSuggestionGeneratorFn(options.openaiApiKey, {
+        coachingStyle,
+        templateSystemPrompt,
+        userSpeakerId: null,
+      });
+      this.deps.coachingEngine.setSuggestionGenerator(generator);
     }
 
     // Start audio capture (mic + tab)
@@ -249,7 +283,7 @@ export class SessionManager {
     // Subscribe to transcription events
     this._unsubscribers.push(
       this.deps.transcription.onEvent((event) => {
-        handleTranscriptionEvent(event, this._state);
+        handleTranscriptionWithCoaching(event, this._state, this.deps.coachingEngine);
       }),
     );
 

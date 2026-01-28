@@ -1,5 +1,5 @@
 import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, TranscriptionPort, SessionRepositoryPort, ConfigRepositoryPort } from '@application/ports';
-import { SessionManager } from '@application/services';
+import { SessionManager, CoachingEngine } from '@application/services';
 
 import {
   OpenAIRealtimeAdapter,
@@ -22,6 +22,7 @@ let transcription: TranscriptionPort | null = null;
 let sessionRepository: SessionRepositoryPort | null = null;
 let configRepository: ConfigRepositoryPort | null = null;
 let sessionManager: SessionManager | null = null;
+let coachingEngine: CoachingEngine | null = null;
 
 export function getEventBus(): EventBusPort {
   if (!eventBus) {
@@ -65,6 +66,18 @@ export function getConfigRepository(): ConfigRepositoryPort {
   return configRepository;
 }
 
+export function getCoachingEngine(): CoachingEngine {
+  if (!coachingEngine) {
+    coachingEngine = new CoachingEngine(getEventBus(), {
+      sessionId: '',
+      coachingStyle: 'diplomatic',
+      templateSystemPrompt: 'You are a helpful meeting coach.',
+      userSpeakerId: null,
+    });
+  }
+  return coachingEngine;
+}
+
 export function getSessionManager(): SessionManager {
   if (!sessionManager) {
     sessionManager = new SessionManager({
@@ -72,6 +85,7 @@ export function getSessionManager(): SessionManager {
       audioCapture: getAudioCapture(),
       realtimeConnection: getRealtimeConnection(),
       transcription: getTranscription(),
+      coachingEngine: getCoachingEngine(),
     });
   }
   return sessionManager;
@@ -86,4 +100,5 @@ export function resetContainer(): void {
   sessionRepository = null;
   configRepository = null;
   sessionManager = null;
+  coachingEngine = null;
 }
