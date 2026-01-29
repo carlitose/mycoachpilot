@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+import { FileAudioCaptureAdapter } from '../../adapters/FileAudioCaptureAdapter';
 import { createCLIContainer } from '../../container';
 import type { CLIContainer } from '../../container';
 
@@ -135,30 +136,36 @@ describe('Meeting Coach Integration', () => {
   });
 
   describe('FileAudioCapture', () => {
-    it('should start and stop without a file (silence mode)', async () => {
-      const result = await container.audioCapture.startMicrophone();
-      expect(result.isOk()).toBe(true);
-      expect(container.audioCapture.getState().isCapturing).toBe(true);
+    let fileAudioCapture: FileAudioCaptureAdapter;
 
-      container.audioCapture.stop();
-      expect(container.audioCapture.getState().isCapturing).toBe(false);
+    beforeEach(() => {
+      fileAudioCapture = new FileAudioCaptureAdapter();
+    });
+
+    it('should start and stop without a file (silence mode)', async () => {
+      const result = await fileAudioCapture.startMicrophone();
+      expect(result.isOk()).toBe(true);
+      expect(fileAudioCapture.getState().isCapturing).toBe(true);
+
+      fileAudioCapture.stop();
+      expect(fileAudioCapture.getState().isCapturing).toBe(false);
     });
 
     it('should emit injected audio chunks', async () => {
       const handler = vi.fn();
-      container.audioCapture.onAudioEvent(handler);
+      fileAudioCapture.onAudioEvent(handler);
 
       // Inject test audio
       const testAudio = new Float32Array(9600); // 600ms at 16kHz
       for (let i = 0; i < testAudio.length; i++) {
         testAudio[i] = Math.sin(i * 0.1) * 0.5;
       }
-      container.audioCapture.injectAudio(testAudio);
-      await container.audioCapture.startMicrophone();
+      fileAudioCapture.injectAudio(testAudio);
+      await fileAudioCapture.startMicrophone();
 
       // Wait for chunks to be emitted
       await new Promise((r) => { setTimeout(r, 1000); });
-      container.audioCapture.stop();
+      fileAudioCapture.stop();
 
       expect(handler).toHaveBeenCalled();
       const audioEvents = handler.mock.calls.filter(

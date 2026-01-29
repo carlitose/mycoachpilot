@@ -121,17 +121,35 @@ export class SessionManager {
 
   private async setupConversationMode(
     _session: Session,
-    options: { openaiApiKey?: string; systemPrompt?: string },
+    options: { openaiApiKey?: string; systemPrompt?: string; audioConfig?: Partial<AudioConfigProps> },
   ): Promise<Result<void, Error>> {
     if (!options.openaiApiKey) {
       return err(SessionError.invalidConfiguration('OpenAI API key is required for conversation mode'));
     }
 
-    // Start audio capture
-    const audioResult = await this.deps.audioCapture.startMicrophone({
-      sampleRate: 24000, // OpenAI requires 24kHz
-      micEnabled: true,
-    });
+    // Start audio capture based on audioSourceType
+    const audioSourceType = (options.audioConfig as { audioSourceType?: string } | undefined)?.audioSourceType ?? 'microphone';
+    const sampleRate = 24000; // OpenAI requires 24kHz
+
+    let audioResult: Result<void, Error>;
+    if (audioSourceType === 'mixed') {
+      audioResult = await this.deps.audioCapture.startMixed({
+        sampleRate,
+        micEnabled: true,
+        tabAudioEnabled: true,
+      });
+    } else if (audioSourceType === 'system') {
+      audioResult = await this.deps.audioCapture.startTabAudio({
+        sampleRate,
+        micEnabled: false,
+        tabAudioEnabled: true,
+      });
+    } else {
+      audioResult = await this.deps.audioCapture.startMicrophone({
+        sampleRate,
+        micEnabled: true,
+      });
+    }
     if (!audioResult.isOk()) return err(audioResult.unwrapErr());
 
     // Setup audio streaming to realtime API
@@ -166,17 +184,35 @@ export class SessionManager {
 
   private async setupTranscriptOnlyMode(
     _session: Session,
-    options: { openaiApiKey?: string; systemPrompt?: string },
+    options: { openaiApiKey?: string; systemPrompt?: string; audioConfig?: Partial<AudioConfigProps> },
   ): Promise<Result<void, Error>> {
     if (!options.openaiApiKey) {
       return err(SessionError.invalidConfiguration('OpenAI API key is required for transcript mode'));
     }
 
-    // Start audio capture
-    const audioResult = await this.deps.audioCapture.startMicrophone({
-      sampleRate: 24000,
-      micEnabled: true,
-    });
+    // Start audio capture based on audioSourceType
+    const audioSourceType = (options.audioConfig as { audioSourceType?: string } | undefined)?.audioSourceType ?? 'microphone';
+    const sampleRate = 24000; // OpenAI requires 24kHz
+
+    let audioResult: Result<void, Error>;
+    if (audioSourceType === 'mixed') {
+      audioResult = await this.deps.audioCapture.startMixed({
+        sampleRate,
+        micEnabled: true,
+        tabAudioEnabled: true,
+      });
+    } else if (audioSourceType === 'system') {
+      audioResult = await this.deps.audioCapture.startTabAudio({
+        sampleRate,
+        micEnabled: false,
+        tabAudioEnabled: true,
+      });
+    } else {
+      audioResult = await this.deps.audioCapture.startMicrophone({
+        sampleRate,
+        micEnabled: true,
+      });
+    }
     if (!audioResult.isOk()) return err(audioResult.unwrapErr());
 
     // Setup audio streaming
@@ -244,17 +280,36 @@ export class SessionManager {
       this.deps.coachingEngine.setSuggestionGenerator(generator);
     }
 
-    // Start audio capture (mic + tab)
-    const audioResult = options.audioConfig?.tabAudioEnabled
-      ? await this.deps.audioCapture.startMixed({
-          sampleRate: 16000, // Deepgram prefers 16kHz
-          micEnabled: true,
-          tabAudioEnabled: true,
-        })
-      : await this.deps.audioCapture.startMicrophone({
-          sampleRate: 16000,
-          micEnabled: true,
-        });
+    // Determine audio source: audioSourceType takes precedence, fallback to tabAudioEnabled for backwards compatibility
+    const audioConfig = options.audioConfig as { audioSourceType?: string; tabAudioEnabled?: boolean } | undefined;
+    let audioSourceType = audioConfig?.audioSourceType;
+    if (!audioSourceType && audioConfig?.tabAudioEnabled) {
+      audioSourceType = 'mixed'; // Legacy: tabAudioEnabled implies mixed mode
+    }
+    audioSourceType = audioSourceType ?? 'microphone';
+
+    const sampleRate = 16000; // Deepgram prefers 16kHz
+
+    let audioResult: Result<void, Error>;
+    if (audioSourceType === 'mixed') {
+      audioResult = await this.deps.audioCapture.startMixed({
+        sampleRate,
+        micEnabled: true,
+        tabAudioEnabled: true,
+      });
+    } else if (audioSourceType === 'system') {
+      audioResult = await this.deps.audioCapture.startTabAudio({
+        sampleRate,
+        micEnabled: false,
+        tabAudioEnabled: true,
+      });
+    } else {
+      // 'microphone' or 'file' (FileAudioCaptureAdapter handles file case)
+      audioResult = await this.deps.audioCapture.startMicrophone({
+        sampleRate,
+        micEnabled: true,
+      });
+    }
 
     if (!audioResult.isOk()) return err(audioResult.unwrapErr());
 

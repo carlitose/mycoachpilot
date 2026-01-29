@@ -81,8 +81,30 @@ export interface ResponseCancelEvent {
   type: 'response.cancel';
 }
 
+// Transcription-only session configuration (intent=transcription)
+export interface TranscriptionSessionUpdateEvent {
+  type: 'transcription_session.update';
+  input_audio_format?: 'pcm16' | 'g711_ulaw' | 'g711_alaw';
+  input_audio_transcription?: {
+    model: string;
+    prompt?: string;
+    language?: string;
+  };
+  turn_detection?: {
+    type: 'server_vad';
+    threshold?: number;
+    prefix_padding_ms?: number;
+    silence_duration_ms?: number;
+  } | null;
+  input_audio_noise_reduction?: {
+    type: 'near_field' | 'far_field';
+  };
+  include?: string[];
+}
+
 export type ClientEvent =
   | SessionUpdateEvent
+  | TranscriptionSessionUpdateEvent
   | InputAudioBufferAppendEvent
   | InputAudioBufferCommitEvent
   | InputAudioBufferClearEvent
@@ -317,10 +339,57 @@ export interface RateLimitsUpdatedEvent {
   }>;
 }
 
+// Transcription-only session events (intent=transcription)
+export interface TranscriptionSessionCreatedEvent {
+  type: 'transcription_session.created';
+  session: {
+    id: string;
+    input_audio_format: string;
+    input_audio_transcription: {
+      model: string;
+      prompt?: string;
+      language?: string;
+    };
+    turn_detection?: {
+      type: 'server_vad';
+      threshold?: number;
+      prefix_padding_ms?: number;
+      silence_duration_ms?: number;
+    } | null;
+    input_audio_noise_reduction?: {
+      type: 'near_field' | 'far_field';
+    };
+  };
+}
+
+export interface TranscriptionSessionUpdatedEvent {
+  type: 'transcription_session.updated';
+  session: {
+    id: string;
+    input_audio_format: string;
+    input_audio_transcription: {
+      model: string;
+      prompt?: string;
+      language?: string;
+    };
+    turn_detection?: {
+      type: 'server_vad';
+      threshold?: number;
+      prefix_padding_ms?: number;
+      silence_duration_ms?: number;
+    } | null;
+    input_audio_noise_reduction?: {
+      type: 'near_field' | 'far_field';
+    };
+  };
+}
+
 export type ServerEvent =
   | ErrorServerEvent
   | SessionCreatedEvent
   | SessionUpdatedEvent
+  | TranscriptionSessionCreatedEvent
+  | TranscriptionSessionUpdatedEvent
   | ConversationCreatedEvent
   | InputAudioBufferCommittedEvent
   | InputAudioBufferClearedEvent

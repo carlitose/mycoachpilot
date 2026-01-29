@@ -38,6 +38,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "commander": "^14.0.2",
+    "coreaudio-node": "^0.1.1",
     "dotenv": "^17.2.3",
     "lucide-react": "^0.563.0",
     "react": "^18.3.1",

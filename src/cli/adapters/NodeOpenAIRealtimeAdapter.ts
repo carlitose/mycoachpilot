@@ -12,7 +12,9 @@ import type { Result } from '../../domain/shared/Result';
 import type { ClientEvent, ServerEvent, SessionConfig } from '../../infrastructure/adapters/realtime/types';
 
 const REALTIME_API_URL = 'wss://api.openai.com/v1/realtime';
+const TRANSCRIPTION_API_URL = 'wss://api.openai.com/v1/realtime?intent=transcription';
 const DEFAULT_MODEL = 'gpt-4o-realtime-preview-2024-12-17';
+const DEFAULT_TRANSCRIPTION_MODEL = 'gpt-4o-mini-transcribe';
 
 export class NodeOpenAIRealtimeAdapter implements RealtimeConnectionPort {
   private ws: WebSocket | null = null;
@@ -37,8 +39,10 @@ export class NodeOpenAIRealtimeAdapter implements RealtimeConnectionPort {
     this.emitEvent({ type: 'connection_state', state: 'connecting' });
 
     try {
-      const model = config.model ?? DEFAULT_MODEL;
-      const url = `${REALTIME_API_URL}?model=${model}`;
+      // Use transcription-specific endpoint for transcriptOnly mode
+      const url = config.transcriptOnly
+        ? TRANSCRIPTION_API_URL
+        : `${REALTIME_API_URL}?model=${config.model ?? DEFAULT_MODEL}`;
 
       this.ws = new WebSocket(url, {
         headers: {
@@ -156,8 +160,14 @@ export class NodeOpenAIRealtimeAdapter implements RealtimeConnectionPort {
   private configureSession(): void {
     if (!this.ws || !this.config) return;
 
+    // Use different configuration for transcription-only mode
+    if (this.config.transcriptOnly) {
+      this.configureTranscriptionSession();
+      return;
+    }
+
     const sessionConfig: Partial<SessionConfig> = {
-      modalities: this.config.transcriptOnly ? ['text'] : ['text', 'audio'],
+      modalities: ['text', 'audio'],
       input_audio_format: 'pcm16',
       output_audio_format: 'pcm16',
       input_audio_transcription: { model: 'whisper-1' },
@@ -180,6 +190,34 @@ export class NodeOpenAIRealtimeAdapter implements RealtimeConnectionPort {
     }
 
     this.send({ type: 'session.update', session: sessionConfig });
+  }
+
+  private configureTranscriptionSession(): void {
+    // Transcription-specific session configuration for intent=transcription endpoint
+    // Uses gpt-4o-mini-transcribe which is better than whisper-1
+    const transcriptionConfig = {
+      type: 'transcription_session.update',
+      session: {
+        input_audio_format: 'pcm16',
+        input_audio_transcription: {
+          model: DEFAULT_TRANSCRIPTION_MODEL,
+        },
+        turn_detection: {
+          type: 'server_vad',
+          threshold: this.config?.vadThreshold ?? 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: this.config?.vadSilenceDuration ?? 500,
+        },
+        input_audio_noise_reduction: {
+          type: 'near_field',
+        },
+      },
+    };
+
+    // Send directly without going through typed ClientEvent
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(transcriptionConfig));
+    }
   }
 
   private send(event: ClientEvent): void {
@@ -207,6 +245,7 @@ export class NodeOpenAIRealtimeAdapter implements RealtimeConnectionPort {
         });
         break;
 
+      // === Transcription-only mode events (intent=transcription) ===
       case 'conversation.item.input_audio_transcription.completed':
         this.emitEvent({
           type: 'transcript',
@@ -216,6 +255,13 @@ export class NodeOpenAIRealtimeAdapter implements RealtimeConnectionPort {
         });
         break;
 
+      // Transcription session confirmed
+      case 'transcription_session.created':
+      case 'transcription_session.updated':
+        // Session is ready, no action needed
+        break;
+
+      // === Conversation mode events ===
       case 'response.audio_transcript.delta':
         this.responseText += event.delta;
         this.emitEvent({ type: 'response_text', text: this.responseText, isFinal: false });

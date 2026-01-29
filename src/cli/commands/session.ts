@@ -2,13 +2,14 @@ import chalk from 'chalk';
 
 import type { SessionModeType } from '../../domain/session';
 import type { CoachingStyleType } from '../../domain/settings/valueObjects/CoachingStyle';
-import type { CLIContainer } from '../container';
+import type { AudioSourceOption, CLIContainer } from '../container';
 
 export interface SessionStartOptions {
   mode: SessionModeType;
   deepgramKey?: string | undefined;
   openaiKey?: string | undefined;
   audioFile?: string | undefined;
+  audioSource?: AudioSourceOption | undefined;
   coachingStyle?: CoachingStyleType | undefined;
 }
 
@@ -37,16 +38,30 @@ export async function startSession(
   });
 
   // Subscribe to transcription events for real-time output
+  let lastTranscriptInterimLength = 0;
   container.transcription.onEvent((event) => {
     if (event.type === 'segment') {
       if (event.isFinal) {
+        // Clear any interim text before printing final
+        if (lastTranscriptInterimLength > 0) {
+          process.stdout.write(`\r${' '.repeat(lastTranscriptInterimLength)}\r`);
+          lastTranscriptInterimLength = 0;
+        }
         process.stdout.write(
           chalk.white(`[Speaker ${String(event.speakerId)}] ${event.text}\n`),
         );
       } else {
-        process.stdout.write(
-          chalk.gray(`  ... ${event.text}\r`),
-        );
+        // Show interim with proper line clearing
+        const maxLen = 75;
+        const displayText = event.text.length > maxLen
+          ? `${event.text.slice(-maxLen)}...`
+          : event.text;
+        const line = chalk.gray(`  ... ${displayText}`);
+        if (lastTranscriptInterimLength > 0) {
+          process.stdout.write(`\r${' '.repeat(lastTranscriptInterimLength)}\r`);
+        }
+        process.stdout.write(line);
+        lastTranscriptInterimLength = line.length;
       }
     } else if (event.type === 'error') {
       process.stderr.write(chalk.red(`Transcription error: ${event.message}\n`));
@@ -68,29 +83,58 @@ export async function startSession(
   });
 
   // Subscribe to realtime events for conversation/transcript modes
+  let lastInterimLength = 0;
   container.realtimeConnection.onEvent((event) => {
     if (event.type === 'transcript' && event.isFinal) {
+      // Clear any interim text before printing final
+      if (lastInterimLength > 0) {
+        process.stdout.write(`\r${' '.repeat(lastInterimLength)}\r`);
+        lastInterimLength = 0;
+      }
       const prefix = event.role === 'user' ? chalk.blue('You') : chalk.magenta('AI');
       process.stdout.write(`${prefix}: ${event.text}\n`);
     } else if (event.type === 'response_text') {
-      // Only show interim results for streaming feedback
-      // Final text is shown via 'transcript' event with AI: prefix
+      // Show interim results with proper line clearing
       if (!event.isFinal) {
-        process.stdout.write(chalk.gray(`  ... ${event.text}\r`));
+        // Truncate long interim text to terminal width (approx 80 chars)
+        const maxLen = 75;
+        const displayText = event.text.length > maxLen
+          ? `${event.text.slice(-maxLen)}...`
+          : event.text;
+        const line = chalk.gray(`  ... ${displayText}`);
+        // Clear previous interim and write new one
+        if (lastInterimLength > 0) {
+          process.stdout.write(`\r${' '.repeat(lastInterimLength)}\r`);
+        }
+        process.stdout.write(line);
+        lastInterimLength = line.length;
       }
     } else if (event.type === 'error') {
       process.stderr.write(chalk.red(`Realtime error: ${event.message}\n`));
     }
   });
 
-  process.stdout.write(chalk.bold(`Starting ${options.mode} session...\n`));
+  const audioSourceLabel = options.audioSource === 'file'
+    ? `file: ${options.audioFile ?? 'unknown'}`
+    : options.audioSource ?? 'microphone';
+  process.stdout.write(chalk.bold(`Starting ${options.mode} session (audio: ${audioSourceLabel})...\n`));
+
+  // Map audioSource to audioConfig for SessionManager
+  const audioSourceOption = options.audioSource ?? 'microphone';
+  const audioConfig = {
+    micEnabled: audioSourceOption === 'microphone' || audioSourceOption === 'mixed' || audioSourceOption === 'file',
+    tabAudioEnabled: audioSourceOption === 'system' || audioSourceOption === 'mixed',
+    audioSourceType: audioSourceOption as 'microphone' | 'system' | 'mixed' | 'file',
+  };
 
   const startOptions: {
     deepgramApiKey?: string;
     openaiApiKey?: string;
     coachingStyle?: CoachingStyleType;
+    audioConfig?: typeof audioConfig;
   } = {
     coachingStyle: options.coachingStyle ?? 'diplomatic',
+    audioConfig,
   };
   if (options.deepgramKey) startOptions.deepgramApiKey = options.deepgramKey;
   if (options.openaiKey) startOptions.openaiApiKey = options.openaiKey;
