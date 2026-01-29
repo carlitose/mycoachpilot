@@ -61,17 +61,12 @@ export class CoachingEngine {
 
   /**
    * Process new transcript segment and potentially generate suggestion
+   * Suggestions are generated for all speakers - the prompt decides what to suggest
    */
   async processSegment(
-    segment: TranscriptSegmentProps,
+    _segment: TranscriptSegmentProps,
     context: CoachingContext,
   ): Promise<SuggestionProps | null> {
-    // Only generate suggestions when the other person is speaking
-    // (not the user)
-    if (this._config.userSpeakerId !== null && segment.speakerId === this._config.userSpeakerId) {
-      return null;
-    }
-
     // Rate limit suggestions
     const now = Date.now();
     if (now - this._lastSuggestionTime < (this._config.suggestionIntervalMs ?? 15000)) {
