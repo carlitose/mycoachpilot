@@ -27,6 +27,8 @@ program
   .option('--openai-key <key>', 'OpenAI API key (or set OPENAI_API_KEY env)')
   .option('--audio-file <path>', 'Audio file to process (WAV format)')
   .option('--audio-source <source>', 'Live audio source: microphone, system, mixed (default: microphone)')
+  .option('--input-device <device>', 'Input device name or ID for microphone capture')
+  .option('--system-device <device>', 'System audio device name or ID (e.g., "BlackHole 2ch") for mixed mode')
   .option('--list-devices', 'List available audio input devices and exit')
   .option('--coaching-style <style>', 'Coaching style: diplomatic, assertive, analytical, supportive', 'diplomatic')
   .action(async (opts: {
@@ -35,6 +37,8 @@ program
     openaiKey?: string;
     audioFile?: string;
     audioSource?: string;
+    inputDevice?: string;
+    systemDevice?: string;
     listDevices?: boolean;
     coachingStyle?: string;
   }) => {
@@ -45,12 +49,22 @@ program
         process.stdout.write('No audio input devices found.\n');
       } else {
         process.stdout.write('Available audio input devices:\n\n');
+        const blackHoleDevices = NodeMicrophoneAdapter.detectBlackHoleDevices();
         for (const device of devices) {
           const defaultMarker = device.isDefault ? ' (default)' : '';
-          process.stdout.write(`  ${device.name}${defaultMarker}\n`);
+          const blackHoleMarker = blackHoleDevices.some((bh) => bh.id === device.id) ? ' [BlackHole - virtual audio]' : '';
+          process.stdout.write(`  ${device.name}${defaultMarker}${blackHoleMarker}\n`);
           process.stdout.write(`    ID: ${device.id}\n`);
           process.stdout.write(`    Sample Rate: ${String(device.sampleRate)} Hz\n`);
           process.stdout.write(`    Channels: ${String(device.channelCount)}\n\n`);
+        }
+        if (blackHoleDevices.length > 0) {
+          process.stdout.write('💡 Tip: For dual input (mic + system audio), use:\n');
+          process.stdout.write('   --audio-source mixed --system-device "BlackHole 2ch"\n');
+          process.stdout.write('   (requires Multi-Output Device setup in Audio MIDI Setup)\n\n');
+        } else {
+          process.stdout.write('💡 Tip: Install BlackHole for system audio capture without TCC permissions:\n');
+          process.stdout.write('   brew install blackhole-2ch\n\n');
         }
       }
       process.exit(0);
@@ -71,6 +85,8 @@ program
     const container = createCLIContainer({
       audioFilePath: opts.audioFile,
       audioSource,
+      inputDevice: opts.inputDevice,
+      systemDevice: opts.systemDevice,
     });
 
     await startSession(container, {

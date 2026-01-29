@@ -11,11 +11,14 @@ export interface AudioCaptureState {
   error: string | null;
 }
 
+export type AudioChannelType = 'microphone' | 'system';
+
 export interface AudioDataEvent {
   type: 'audio';
   data: Float32Array;
   sampleRate: number;
   timestamp: number;
+  channel?: AudioChannelType;
 }
 
 export interface AudioLevelEvent {

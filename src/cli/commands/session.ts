@@ -37,6 +37,39 @@ export async function startSession(
     }
   });
 
+  // Subscribe to SegmentReceived events for meeting_coach mode speaker identification
+  let lastSegmentInterimLength = 0;
+  eventBus.subscribe('SegmentReceived', (event) => {
+    const payload = (event as { payload?: { speakerName?: string; text?: string; isFinal?: boolean } }).payload;
+    if (payload) {
+      if (payload.isFinal) {
+        // Clear any interim text before printing final
+        if (lastSegmentInterimLength > 0) {
+          process.stdout.write(`\r${' '.repeat(lastSegmentInterimLength)}\r`);
+          lastSegmentInterimLength = 0;
+        }
+        // Use speaker name (You/Others) instead of speaker number
+        const speakerLabel = payload.speakerName ?? 'Speaker';
+        const speakerColor = speakerLabel === 'You' ? chalk.blue : chalk.magenta;
+        process.stdout.write(
+          speakerColor(`[${speakerLabel}] `) + chalk.white(`${payload.text ?? ''}\n`),
+        );
+      } else {
+        // Show interim with proper line clearing
+        const maxLen = 75;
+        const displayText = (payload.text ?? '').length > maxLen
+          ? `${(payload.text ?? '').slice(-maxLen)}...`
+          : payload.text ?? '';
+        const line = chalk.gray(`  ... ${displayText}`);
+        if (lastSegmentInterimLength > 0) {
+          process.stdout.write(`\r${' '.repeat(lastSegmentInterimLength)}\r`);
+        }
+        process.stdout.write(line);
+        lastSegmentInterimLength = line.length;
+      }
+    }
+  });
+
   // Subscribe to transcription events for real-time output
   let lastTranscriptInterimLength = 0;
   container.transcription.onEvent((event) => {
@@ -82,9 +115,14 @@ export async function startSession(
     }
   });
 
-  // Subscribe to realtime events for conversation/transcript modes
+  // Subscribe to realtime events for conversation/transcript_only modes
+  // (meeting_coach uses SegmentReceived events for speaker identification)
   let lastInterimLength = 0;
   container.realtimeConnection.onEvent((event) => {
+    // Skip transcript events for meeting_coach - handled by SegmentReceived
+    if (options.mode === 'meeting_coach' && event.type === 'transcript') {
+      return;
+    }
     if (event.type === 'transcript' && event.isFinal) {
       // Clear any interim text before printing final
       if (lastInterimLength > 0) {

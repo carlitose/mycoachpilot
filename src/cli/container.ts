@@ -29,6 +29,18 @@ export interface CLIContainerOptions {
    * Default: 'microphone' when no audioFilePath is provided
    */
   audioSource?: AudioSourceOption;
+  /**
+   * Input device ID or name for microphone capture.
+   * Useful for specifying virtual audio devices like BlackHole.
+   * Can be a device ID or a partial name match (e.g., "BlackHole 2ch").
+   */
+  inputDevice?: string | undefined;
+  /**
+   * System device ID or name for capturing system audio (e.g., "BlackHole 2ch").
+   * Used in 'mixed' mode to capture system audio separately from the microphone.
+   * If specified, uses this device for system audio instead of native SystemAudioRecorder.
+   */
+  systemDevice?: string | undefined;
 }
 
 export interface CLIContainer {
@@ -53,8 +65,12 @@ function createAudioCapture(options: CLIContainerOptions): AudioCapturePort {
   }
 
   // Use live audio capture with NodeMicrophoneAdapter
-  // Default to 'microphone' if no source specified
-  return new NodeMicrophoneAdapter();
+  // Pass inputDevice option if specified (for microphone)
+  // Pass systemDevice option if specified (for system audio via BlackHole)
+  return new NodeMicrophoneAdapter({
+    inputDevice: options.inputDevice,
+    systemDevice: options.systemDevice,
+  });
 }
 
 export function createCLIContainer(options: CLIContainerOptions = {}): CLIContainer {

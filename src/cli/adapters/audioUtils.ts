@@ -70,6 +70,73 @@ export function getDefaultInputDeviceId(): string | null {
 }
 
 /**
+ * Find audio input devices by name (case-insensitive partial match).
+ */
+export function findDevicesByName(searchTerm: string): AudioDeviceInfo[] {
+  const devices = listInputDevices();
+  const lowerSearch = searchTerm.toLowerCase();
+  return devices.filter((d) => d.name.toLowerCase().includes(lowerSearch));
+}
+
+/**
+ * Find a single audio input device by exact or partial name match.
+ * Returns the first match found.
+ */
+export function findDeviceByName(searchTerm: string): AudioDeviceInfo | null {
+  const matches = findDevicesByName(searchTerm);
+  return matches.length > 0 ? matches[0] ?? null : null;
+}
+
+/**
+ * Detect BlackHole virtual audio devices.
+ * BlackHole is a virtual audio driver that allows capturing system audio
+ * without requiring TCC permissions (Screen & System Audio Recording).
+ */
+export function detectBlackHoleDevices(): AudioDeviceInfo[] {
+  return findDevicesByName('BlackHole');
+}
+
+/**
+ * Check if BlackHole is installed and available.
+ */
+export function isBlackHoleAvailable(): boolean {
+  return detectBlackHoleDevices().length > 0;
+}
+
+/**
+ * Get BlackHole installation instructions for macOS.
+ */
+export function getBlackHoleInstructions(): string {
+  return `
+⚠️  System audio capture requires additional setup on macOS.
+
+Recommended solution: Install BlackHole virtual audio driver
+
+1. Install BlackHole:
+   brew install blackhole-2ch
+
+2. Configure Multi-Output Device:
+   a. Open "Audio MIDI Setup" (search in Spotlight)
+   b. Click "+" at bottom-left → "Create Multi-Output Device"
+   c. Check both your speakers AND "BlackHole 2ch"
+   d. Set "Master Device" to your speakers
+
+3. Set System Output:
+   System Settings → Sound → Output → Select "Multi-Output Device"
+
+4. Run with dual input (mic + system audio):
+   npm run cli -- session start --audio-source mixed --system-device "BlackHole 2ch"
+
+   Or for system audio only:
+   npm run cli -- session start --input-device "BlackHole 2ch"
+
+This routes system audio through BlackHole while you still hear it normally.
+Dual input captures your microphone (tagged as "You") and system audio separately.
+No TCC permissions required!
+`.trim();
+}
+
+/**
  * Convert Int16 PCM buffer to Float32Array and create an AudioDataEvent.
  */
 export function convertPcmToAudioEvent(

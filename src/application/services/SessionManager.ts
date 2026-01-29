@@ -5,10 +5,10 @@ import type { CoachingStyleType } from '@domain/settings';
 import { Result, ok, err, SessionError, DomainEvent } from '@domain/shared';
 import { Message, TranscriptSegment, Speaker, MessageProps, TranscriptSegmentProps, SpeakerProps } from '@domain/transcript';
 
-import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, TranscriptionPort, RealtimeConfig, TranscriptionConfig } from '../ports';
+import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, TranscriptionPort, RealtimeConfig, AudioChannelType } from '../ports';
 
 import type { CoachingEngine } from './CoachingEngine';
-import { createSuggestionGeneratorFn, handleTranscriptionWithCoaching } from './CoachingIntegration';
+import { createSuggestionGeneratorFn } from './CoachingIntegration';
 import { handleRealtimeEvent, float32ToPCM16 } from './SessionEventHandlers';
 
 export interface SessionManagerDependencies {
@@ -256,12 +256,24 @@ export class SessionManager {
       templateSystemPrompt?: string;
     },
   ): Promise<Result<void, Error>> {
-    if (!options.deepgramApiKey) {
-      return err(SessionError.invalidConfiguration('Deepgram API key is required for meeting coach mode'));
+    // Meeting coach now uses OpenAI Realtime for transcription (same as transcript_only)
+    // with channel-based speaker identification (mic = You, system = Others)
+    if (!options.openaiApiKey) {
+      return err(SessionError.invalidConfiguration('OpenAI API key is required for meeting coach mode'));
     }
 
-    // Configure CoachingEngine if available and openaiApiKey is provided
-    if (this.deps.coachingEngine && options.openaiApiKey) {
+    // Initialize speakers: "You" (microphone) and "Others" (system audio)
+    const youSpeaker = Speaker.create(0);
+    youSpeaker.setName('You');
+    youSpeaker.markAsUser();
+    this._state.speakers.set(0, youSpeaker);
+
+    const othersSpeaker = Speaker.create(1);
+    othersSpeaker.setName('Others');
+    this._state.speakers.set(1, othersSpeaker);
+
+    // Configure CoachingEngine with userSpeakerId = 0 (You)
+    if (this.deps.coachingEngine) {
       const coachingStyle = options.coachingStyle ?? 'diplomatic';
       const templateSystemPrompt = options.templateSystemPrompt ?? 'You are a helpful meeting coach.';
 
@@ -269,18 +281,22 @@ export class SessionManager {
         sessionId: session.id.toString(),
         coachingStyle,
         templateSystemPrompt,
+        userSpeakerId: 0, // "You" is speaker 0
       });
 
       // Create and set suggestion generator
       const generator = createSuggestionGeneratorFn(options.openaiApiKey, {
         coachingStyle,
         templateSystemPrompt,
-        userSpeakerId: null,
+        userSpeakerId: 0,
       });
       this.deps.coachingEngine.setSuggestionGenerator(generator);
     }
 
-    // Determine audio source: audioSourceType takes precedence, fallback to tabAudioEnabled for backwards compatibility
+    // Track last active channel for speaker identification
+    let lastActiveChannel: AudioChannelType | null = null;
+
+    // Determine audio source
     const audioConfig = options.audioConfig as { audioSourceType?: string; tabAudioEnabled?: boolean } | undefined;
     let audioSourceType = audioConfig?.audioSourceType;
     if (!audioSourceType && audioConfig?.tabAudioEnabled) {
@@ -288,7 +304,7 @@ export class SessionManager {
     }
     audioSourceType = audioSourceType ?? 'microphone';
 
-    const sampleRate = 16000; // Deepgram prefers 16kHz
+    const sampleRate = 24000; // OpenAI requires 24kHz
 
     let audioResult: Result<void, Error>;
     if (audioSourceType === 'mixed') {
@@ -304,7 +320,6 @@ export class SessionManager {
         tabAudioEnabled: true,
       });
     } else {
-      // 'microphone' or 'file' (FileAudioCaptureAdapter handles file case)
       audioResult = await this.deps.audioCapture.startMicrophone({
         sampleRate,
         micEnabled: true,
@@ -313,32 +328,104 @@ export class SessionManager {
 
     if (!audioResult.isOk()) return err(audioResult.unwrapErr());
 
-    // Setup audio streaming to Deepgram
+    // Setup audio streaming to OpenAI Realtime with channel tracking
     this._audioUnsubscriber = this.deps.audioCapture.onAudioEvent((event) => {
       if (event.type === 'audio' && this.isActive) {
+        // Track the last active channel for speaker identification
+        if (event.channel) {
+          lastActiveChannel = event.channel;
+        }
         const pcm16 = float32ToPCM16(event.data);
-        this.deps.transcription.sendAudio(pcm16);
+        this.deps.realtimeConnection.sendAudio(pcm16);
       }
     });
 
-    // Connect to Deepgram
-    const transcriptionConfig: TranscriptionConfig = {
-      apiKey: options.deepgramApiKey,
-      diarize: true,
-      punctuate: true,
-      interimResults: true,
-      sampleRate: 16000,
+    // Connect to OpenAI Realtime in transcript-only mode
+    const realtimeConfig: RealtimeConfig = {
+      apiKey: options.openaiApiKey,
+      vadEnabled: true,
+      transcriptOnly: true, // No AI responses, just transcription
     };
-    const connectResult = await this.deps.transcription.connect(transcriptionConfig);
+    const connectResult = await this.deps.realtimeConnection.connect(realtimeConfig);
     if (!connectResult.isOk()) {
       this.deps.audioCapture.stop();
       return err(connectResult.unwrapErr());
     }
 
-    // Subscribe to transcription events
+    // Subscribe to realtime transcript events
     this._unsubscribers.push(
-      this.deps.transcription.onEvent((event) => {
-        handleTranscriptionWithCoaching(event, this._state, this.deps.coachingEngine);
+      this.deps.realtimeConnection.onEvent((event) => {
+        if (event.type === 'transcript') {
+          // Determine speaker from channel: mic = You (0), system = Others (1)
+          const speakerId = lastActiveChannel === 'microphone' ? 0 : 1;
+
+          if (event.isFinal) {
+            // Create transcript segment with speaker info
+            const segment = TranscriptSegment.create(
+              speakerId,
+              event.text,
+              Date.now(), // startMs (approximate)
+              Date.now(), // endMs (approximate)
+              {
+                confidence: 1.0,
+                words: [],
+                isFinal: true,
+              },
+            );
+            this._state.segments.push(segment);
+            this._state.interimTranscript = null;
+
+            // Update speaker stats
+            const speaker = this._state.speakers.get(speakerId);
+            if (speaker) {
+              const wordCount = event.text.split(/\s+/).length;
+              speaker.addSegment(wordCount, 0);
+            }
+
+            // Emit SegmentReceived event for CLI output
+            this.deps.eventBus.publish({
+              eventType: 'SegmentReceived',
+              occurredAt: new Date(),
+              aggregateId: session.id.toString(),
+              payload: {
+                speakerId,
+                speakerName: speaker?.displayName ?? `Speaker ${String(speakerId)}`,
+                text: event.text,
+                isFinal: true,
+              },
+            } as DomainEvent);
+
+            // Trigger coaching on final segments from "Others" (speaker 1)
+            if (this.deps.coachingEngine) {
+              const context = {
+                recentSegments: this._state.segments.slice(-10).map((s) => s.toProps()),
+                speakers: Array.from(this._state.speakers.values()).map((s) => s.toProps()),
+                currentSpeaker: speakerId,
+                conversationTone: 'unknown' as const,
+              };
+              void this.deps.coachingEngine.processSegment(segment.toProps(), context);
+            }
+          } else {
+            this._state.interimTranscript = event.text;
+
+            // Emit interim segment for CLI output
+            const speaker = this._state.speakers.get(speakerId);
+            this.deps.eventBus.publish({
+              eventType: 'SegmentReceived',
+              occurredAt: new Date(),
+              aggregateId: session.id.toString(),
+              payload: {
+                speakerId,
+                speakerName: speaker?.displayName ?? `Speaker ${String(speakerId)}`,
+                text: event.text,
+                isFinal: false,
+              },
+            } as DomainEvent);
+          }
+        } else if (event.type === 'error') {
+          const errorMessage = Message.systemMessage(`Error: ${event.message}`);
+          this._state.messages.push(errorMessage);
+        }
       }),
     );
 

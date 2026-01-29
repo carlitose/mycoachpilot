@@ -9,6 +9,7 @@ export type {
   AudioCapturePort,
   AudioCaptureState,
   AudioSourceType,
+  AudioChannelType,
   AudioDataEvent,
   AudioLevelEvent,
   AudioEvent,
