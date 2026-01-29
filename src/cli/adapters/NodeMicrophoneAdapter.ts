@@ -1,8 +1,6 @@
 import {
   MicrophoneRecorder,
   SystemAudioRecorder,
-  listAudioDevices,
-  getDefaultInputDevice,
   ensureMicrophonePermission,
   ensureSystemAudioPermission,
 } from 'coreaudio-node';
@@ -10,7 +8,6 @@ import {
 import type {
   AudioCapturePort,
   AudioCaptureState,
-  AudioDataEvent,
   AudioEvent,
   AudioEventHandler,
   AudioSourceType,
@@ -19,15 +16,18 @@ import type { AudioConfigProps } from '../../domain/session/valueObjects/AudioCo
 import { ok, err } from '../../domain/shared/Result';
 import type { Result } from '../../domain/shared/Result';
 
-export interface AudioDeviceInfo {
-  id: string;
-  name: string;
-  isDefault: boolean;
-  isInput: boolean;
-  isOutput: boolean;
-  sampleRate: number;
-  channelCount: number;
-}
+import {
+  type AudioDeviceInfo,
+  debugAudio as debug,
+  withTimeout,
+  PERMISSION_TIMEOUT_MS,
+  RECORDER_START_TIMEOUT_MS,
+  listInputDevices,
+  getDefaultInputDeviceId,
+  convertPcmToAudioEvent,
+} from './audioUtils';
+
+export type { AudioDeviceInfo };
 
 export type LiveAudioSourceType = 'microphone' | 'system' | 'mixed';
 
@@ -37,42 +37,15 @@ export type LiveAudioSourceType = 'microphone' | 'system' | 'mixed';
  * Requires macOS 14.4+ for system audio capture.
  */
 export class NodeMicrophoneAdapter implements AudioCapturePort {
-  private _state: AudioCaptureState = {
-    isCapturing: false,
-    source: null,
-    sampleRate: 24000, // Default to 24kHz (OpenAI Realtime API requirement)
-    channelCount: 1,
-    error: null,
-  };
-
+  private _state: AudioCaptureState = { isCapturing: false, source: null, sampleRate: 24000, channelCount: 1, error: null };
   private handlers = new Set<AudioEventHandler>();
   private micRecorder: MicrophoneRecorder | null = null;
   private systemRecorder: SystemAudioRecorder | null = null;
   private isPaused = false;
   private lastPcm16Data: Int16Array | null = null;
 
-  /**
-   * List available audio input devices.
-   */
-  static listInputDevices(): AudioDeviceInfo[] {
-    const devices = listAudioDevices();
-    return devices.filter((d) => d.isInput).map((d) => ({
-      id: d.id,
-      name: d.name,
-      isDefault: d.isDefault,
-      isInput: d.isInput,
-      isOutput: d.isOutput,
-      sampleRate: d.sampleRate,
-      channelCount: d.channelCount,
-    }));
-  }
-
-  /**
-   * Get the default input device ID.
-   */
-  static getDefaultInputDeviceId(): string | null {
-    return getDefaultInputDevice() ?? null;
-  }
+  static listInputDevices = listInputDevices;
+  static getDefaultInputDeviceId = getDefaultInputDeviceId;
 
   getState(): AudioCaptureState {
     return this._state;
@@ -96,76 +69,178 @@ export class NodeMicrophoneAdapter implements AudioCapturePort {
   ): Promise<Result<void, Error>> {
     const targetSampleRate = config?.sampleRate ?? 24000;
     const chunkDurationMs = 100; // 100ms chunks for low latency
+    let systemAudioFailed = false;
+
+    debug(`Starting capture with source: ${source}, sampleRate: ${String(targetSampleRate)}`);
 
     try {
       // Request permissions based on source
       if (source === 'microphone' || source === 'mixed') {
+        debug('Requesting microphone permission...');
         try {
-          await ensureMicrophonePermission();
-        } catch {
+          await withTimeout(
+            ensureMicrophonePermission(),
+            PERMISSION_TIMEOUT_MS,
+            'Microphone permission request',
+          );
+          debug('Microphone permission granted');
+        } catch (permError) {
+          const errorMsg = permError instanceof Error ? permError.message : String(permError);
+          debug(`Microphone permission failed: ${errorMsg}`);
           return err(new Error('Microphone permission denied. Please grant access in System Settings > Privacy & Security > Microphone'));
         }
       }
 
       if (source === 'system' || source === 'mixed') {
+        debug('Requesting system audio permission...');
         try {
-          await ensureSystemAudioPermission();
-        } catch {
-          return err(new Error(
-            'System audio permission denied. Please enable "System Audio Recording Only" in System Settings > Privacy & Security > Screen & System Audio Recording. Requires macOS 14.4+',
-          ));
+          await withTimeout(
+            ensureSystemAudioPermission(),
+            PERMISSION_TIMEOUT_MS,
+            'System audio permission request',
+          );
+          debug('System audio permission granted');
+        } catch (permError) {
+          const errorMsg = permError instanceof Error ? permError.message : String(permError);
+          debug(`System audio permission failed: ${errorMsg}`);
+
+          if (source === 'mixed') {
+            // For mixed mode, warn but continue with microphone only
+            process.stderr.write(
+              '\n⚠️  System audio permission denied. Falling back to microphone only.\n' +
+              '   To enable system audio, grant permission in System Settings > Privacy & Security > Screen & System Audio Recording.\n' +
+              '   Note: Requires macOS 14.4+\n\n',
+            );
+            systemAudioFailed = true;
+          } else {
+            // For system-only mode, this is a fatal error
+            return err(new Error(
+              'System audio permission denied. Please enable "System Audio Recording Only" in System Settings > Privacy & Security > Screen & System Audio Recording. Requires macOS 14.4+',
+            ));
+          }
         }
       }
 
       // Create recorders based on source type
       if (source === 'microphone' || source === 'mixed') {
+        debug('Creating MicrophoneRecorder...');
         this.micRecorder = new MicrophoneRecorder({
           sampleRate: targetSampleRate,
           chunkDurationMs,
           stereo: false,
           gain: 1.0,
         });
+        debug('MicrophoneRecorder created');
 
         this.micRecorder.on('data', (chunk) => {
           if (!this.isPaused) {
-            this.handleAudioData(chunk.data, targetSampleRate, 'microphone');
+            this.handleAudioData(chunk.data, targetSampleRate);
           }
         });
 
         this.micRecorder.on('error', (error) => {
+          debug(`MicrophoneRecorder error: ${error.message}`);
           this._state = { ...this._state, error: error.message };
         });
       }
 
-      if (source === 'system' || source === 'mixed') {
-        this.systemRecorder = new SystemAudioRecorder({
-          sampleRate: targetSampleRate,
-          chunkDurationMs,
-          stereo: false,
-          mute: false, // Don't mute system audio
-        });
+      if ((source === 'system' || source === 'mixed') && !systemAudioFailed) {
+        debug('Creating SystemAudioRecorder...');
+        try {
+          this.systemRecorder = new SystemAudioRecorder({
+            sampleRate: targetSampleRate,
+            chunkDurationMs,
+            stereo: false,
+            mute: false, // Don't mute system audio
+          });
+          debug('SystemAudioRecorder created');
 
-        this.systemRecorder.on('data', (chunk) => {
-          if (!this.isPaused) {
-            this.handleAudioData(chunk.data, targetSampleRate, 'system');
+          this.systemRecorder.on('data', (chunk) => {
+            if (!this.isPaused) {
+              this.handleAudioData(chunk.data, targetSampleRate);
+            }
+          });
+
+          this.systemRecorder.on('error', (error) => {
+            debug(`SystemAudioRecorder error: ${error.message}`);
+            this._state = { ...this._state, error: error.message };
+          });
+        } catch (createError) {
+          const errorMsg = createError instanceof Error ? createError.message : String(createError);
+          debug(`Failed to create SystemAudioRecorder: ${errorMsg}`);
+
+          if (source === 'mixed') {
+            process.stderr.write(
+              `\n⚠️  Failed to initialize system audio capture: ${errorMsg}\n` +
+              '   Falling back to microphone only.\n\n',
+            );
+            this.systemRecorder = null;
+          } else {
+            return err(new Error(`Failed to initialize system audio capture: ${errorMsg}`));
           }
-        });
-
-        this.systemRecorder.on('error', (error) => {
-          this._state = { ...this._state, error: error.message };
-        });
+        }
       }
 
       // Start recorders
       if (this.micRecorder) {
-        await this.micRecorder.start();
+        debug('Starting MicrophoneRecorder...');
+        try {
+          await withTimeout(
+            this.micRecorder.start(),
+            RECORDER_START_TIMEOUT_MS,
+            'MicrophoneRecorder.start',
+          );
+          debug('MicrophoneRecorder started successfully');
+        } catch (startError) {
+          const errorMsg = startError instanceof Error ? startError.message : String(startError);
+          debug(`MicrophoneRecorder start failed: ${errorMsg}`);
+          this.micRecorder = null;
+          return err(new Error(`Failed to start microphone capture: ${errorMsg}`));
+        }
       }
+
       if (this.systemRecorder) {
-        await this.systemRecorder.start();
+        debug('Starting SystemAudioRecorder...');
+        try {
+          await withTimeout(
+            this.systemRecorder.start(),
+            RECORDER_START_TIMEOUT_MS,
+            'SystemAudioRecorder.start',
+          );
+          debug('SystemAudioRecorder started successfully');
+        } catch (startError) {
+          const errorMsg = startError instanceof Error ? startError.message : String(startError);
+          debug(`SystemAudioRecorder start failed: ${errorMsg}`);
+
+          if (source === 'mixed' && this.micRecorder) {
+            // For mixed mode, warn but continue with microphone only
+            process.stderr.write(
+              `\n⚠️  Failed to start system audio capture: ${errorMsg}\n` +
+              '   Continuing with microphone only.\n\n',
+            );
+            this.systemRecorder = null;
+          } else if (source === 'system') {
+            return err(new Error(`Failed to start system audio capture: ${errorMsg}`));
+          }
+        }
+      }
+
+      // Verify we have at least one working recorder
+      if (!this.micRecorder && !this.systemRecorder) {
+        debug('No working recorders available');
+        return err(new Error('No audio capture available. Both microphone and system audio failed to initialize.'));
       }
 
       // Map source type to AudioSourceType
-      const audioSource: AudioSourceType = source === 'system' ? 'tab' : source;
+      // If we fell back to microphone only, update the source accordingly
+      let audioSource: AudioSourceType;
+      if (source === 'system') {
+        audioSource = 'tab';
+      } else if (source === 'mixed' && !this.systemRecorder) {
+        audioSource = 'microphone'; // Fell back to microphone only
+      } else {
+        audioSource = source;
+      }
 
       this._state = {
         isCapturing: true,
@@ -176,46 +251,19 @@ export class NodeMicrophoneAdapter implements AudioCapturePort {
       };
       this.isPaused = false;
 
+      debug(`Capture started successfully with source: ${audioSource}`);
       return ok(undefined);
     } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      debug(`Unexpected error during capture start: ${errorMsg}`);
       return err(e instanceof Error ? e : new Error(String(e)));
     }
   }
 
-  /**
-   * Handle incoming audio data from recorders.
-   * Converts Int16 PCM to Float32Array for compatibility with the pipeline.
-   */
-  private handleAudioData(
-    data: Buffer,
-    sampleRate: number,
-    _source: 'microphone' | 'system',
-  ): void {
-    // coreaudio-node outputs Int16 PCM when sampleRate is specified
-    const int16Array = new Int16Array(
-      data.buffer,
-      data.byteOffset,
-      data.length / 2,
-    );
-
-    // Store raw PCM16 data
+  /** Handle incoming audio data from recorders. */
+  private handleAudioData(data: Buffer, sampleRate: number): void {
+    const { int16Array, event } = convertPcmToAudioEvent(data, sampleRate);
     this.lastPcm16Data = int16Array;
-
-    // Convert Int16 to Float32 for compatibility with existing pipeline
-    const float32Array = new Float32Array(int16Array.length);
-    for (let i = 0; i < int16Array.length; i++) {
-      const sample = int16Array[i] ?? 0;
-      // Normalize to -1.0 to 1.0 range
-      float32Array[i] = sample / (sample < 0 ? 0x8000 : 0x7fff);
-    }
-
-    const event: AudioDataEvent = {
-      type: 'audio',
-      data: float32Array,
-      sampleRate,
-      timestamp: Date.now(),
-    };
-
     this.emit(event);
   }
 
@@ -230,48 +278,22 @@ export class NodeMicrophoneAdapter implements AudioCapturePort {
   }
 
   stop(): void {
-    if (this.micRecorder) {
-      this.micRecorder.stop().catch(() => {
-        // Ignore stop errors
-      });
-      this.micRecorder = null;
-    }
-
-    if (this.systemRecorder) {
-      this.systemRecorder.stop().catch(() => {
-        // Ignore stop errors
-      });
-      this.systemRecorder = null;
-    }
-
-    // Emit ended event
+    this.micRecorder?.stop().catch(() => { /* ignore */ });
+    this.micRecorder = null;
+    this.systemRecorder?.stop().catch(() => { /* ignore */ });
+    this.systemRecorder = null;
     this.emit({ type: 'ended', timestamp: Date.now() });
-
-    this._state = {
-      ...this._state,
-      isCapturing: false,
-      source: null,
-    };
+    this._state = { ...this._state, isCapturing: false, source: null };
     this.isPaused = false;
     this.lastPcm16Data = null;
   }
 
-  pause(): void {
-    this.isPaused = true;
-  }
-
-  resume(): void {
-    this.isPaused = false;
-  }
+  pause(): void { this.isPaused = true; }
+  resume(): void { this.isPaused = false; }
+  getPCM16Data(): Int16Array | null { return this.lastPcm16Data; }
 
   onAudioEvent(handler: AudioEventHandler): () => void {
     this.handlers.add(handler);
-    return () => {
-      this.handlers.delete(handler);
-    };
-  }
-
-  getPCM16Data(): Int16Array | null {
-    return this.lastPcm16Data;
+    return () => { this.handlers.delete(handler); };
   }
 }
