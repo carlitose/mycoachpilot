@@ -15,7 +15,6 @@ export interface SettingsSliceState {
 const defaultConfig: UserConfigProps = {
   id: 'default',
   openaiApiKey: null,
-  deepgramApiKey: null,
   defaultMode: 'conversation',
   defaultTemplateId: 'general',
   coachingStyle: 'diplomatic',
@@ -42,10 +41,6 @@ export const settingsSlice = createSlice({
 
     setOpenaiApiKey: (state, action: PayloadAction<string | null>) => {
       state.config.openaiApiKey = action.payload;
-    },
-
-    setDeepgramApiKey: (state, action: PayloadAction<string | null>) => {
-      state.config.deepgramApiKey = action.payload;
     },
 
     setDefaultMode: (state, action: PayloadAction<SessionModeType>) => {
@@ -106,7 +101,6 @@ export const settingsSlice = createSlice({
 export const {
   setConfig,
   setOpenaiApiKey,
-  setDeepgramApiKey,
   setDefaultMode,
   setDefaultTemplate,
   setCoachingStyle,

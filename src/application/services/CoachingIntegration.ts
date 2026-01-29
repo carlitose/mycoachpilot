@@ -2,10 +2,8 @@ import type { SuggestionProps } from '@domain/coaching';
 import type { CoachingStyleType } from '@domain/settings';
 import type { TranscriptSegment, Speaker } from '@domain/transcript';
 
-import type { TranscriptionEvent } from '../ports';
-
 import type { CoachingEngine, CoachingContext } from './CoachingEngine';
-import { handleTranscriptionEvent, SessionEventState } from './SessionEventHandlers';
+import { handleTranscriptionEvent, SessionEventState, TranscriptionEvent } from './SessionEventHandlers';
 
 /**
  * Creates a suggestion generator function for the CoachingEngine

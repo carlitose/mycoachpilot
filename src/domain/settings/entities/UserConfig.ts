@@ -7,7 +7,6 @@ import { CoachingStyle, CoachingStyleType } from '../valueObjects/CoachingStyle'
 export interface UserConfigProps {
   id: string;
   openaiApiKey: string | null;
-  deepgramApiKey: string | null;
   defaultMode: SessionModeType;
   defaultTemplateId: string;
   coachingStyle: CoachingStyleType;
@@ -21,7 +20,6 @@ export interface UserConfigProps {
  */
 export class UserConfig extends AggregateRoot<string> {
   private _openaiApiKey: ApiKey | null;
-  private _deepgramApiKey: ApiKey | null;
   private _defaultMode: SessionModeType;
   private _defaultTemplateId: string;
   private _coachingStyle: CoachingStyle;
@@ -31,7 +29,6 @@ export class UserConfig extends AggregateRoot<string> {
   private constructor(
     id: string,
     openaiApiKey: ApiKey | null,
-    deepgramApiKey: ApiKey | null,
     defaultMode: SessionModeType,
     defaultTemplateId: string,
     coachingStyle: CoachingStyle,
@@ -40,7 +37,6 @@ export class UserConfig extends AggregateRoot<string> {
   ) {
     super(id);
     this._openaiApiKey = openaiApiKey;
-    this._deepgramApiKey = deepgramApiKey;
     this._defaultMode = defaultMode;
     this._defaultTemplateId = defaultTemplateId;
     this._coachingStyle = coachingStyle;
@@ -52,16 +48,8 @@ export class UserConfig extends AggregateRoot<string> {
     return this._openaiApiKey?.key ?? null;
   }
 
-  get deepgramApiKey(): string | null {
-    return this._deepgramApiKey?.key ?? null;
-  }
-
   get maskedOpenaiKey(): string | null {
     return this._openaiApiKey?.maskedKey ?? null;
-  }
-
-  get maskedDeepgramKey(): string | null {
-    return this._deepgramApiKey?.maskedKey ?? null;
   }
 
   get defaultMode(): SessionModeType {
@@ -88,12 +76,8 @@ export class UserConfig extends AggregateRoot<string> {
     return this._openaiApiKey !== null && this._openaiApiKey.isValid;
   }
 
-  get hasDeepgramKey(): boolean {
-    return this._deepgramApiKey !== null && this._deepgramApiKey.isValid;
-  }
-
   canUseMeetingCoach(): boolean {
-    return this.hasDeepgramKey;
+    return this.hasOpenaiKey;
   }
 
   canUseConversation(): boolean {
@@ -105,15 +89,6 @@ export class UserConfig extends AggregateRoot<string> {
     this.addDomainEvent('ConfigUpdated', {
       configId: this._id,
       field: 'openaiApiKey',
-      hasValue: key !== null,
-    });
-  }
-
-  setDeepgramApiKey(key: string | null): void {
-    this._deepgramApiKey = key ? ApiKey.deepgram(key) : null;
-    this.addDomainEvent('ConfigUpdated', {
-      configId: this._id,
-      field: 'deepgramApiKey',
       hasValue: key !== null,
     });
   }
@@ -138,20 +113,15 @@ export class UserConfig extends AggregateRoot<string> {
     this._language = language;
   }
 
-  getApiKey(service: ApiKeyService): ApiKeyProps | null {
-    switch (service) {
-      case 'openai':
-        return this._openaiApiKey?.toJSON() ?? null;
-      case 'deepgram':
-        return this._deepgramApiKey?.toJSON() ?? null;
-    }
+  getApiKey(_service: ApiKeyService): ApiKeyProps | null {
+    // Only OpenAI is supported
+    return this._openaiApiKey?.toJSON() ?? null;
   }
 
   toProps(): UserConfigProps {
     return {
       id: this._id,
       openaiApiKey: this._openaiApiKey?.key ?? null,
-      deepgramApiKey: this._deepgramApiKey?.key ?? null,
       defaultMode: this._defaultMode,
       defaultTemplateId: this._defaultTemplateId,
       coachingStyle: this._coachingStyle.toString(),
@@ -163,7 +133,6 @@ export class UserConfig extends AggregateRoot<string> {
   static create(id?: string): UserConfig {
     return new UserConfig(
       id ?? 'default',
-      null,
       null,
       'conversation',
       'general',
@@ -177,7 +146,6 @@ export class UserConfig extends AggregateRoot<string> {
     return new UserConfig(
       props.id,
       props.openaiApiKey ? ApiKey.openai(props.openaiApiKey) : null,
-      props.deepgramApiKey ? ApiKey.deepgram(props.deepgramApiKey) : null,
       props.defaultMode,
       props.defaultTemplateId,
       CoachingStyle.create(props.coachingStyle),

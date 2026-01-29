@@ -30,17 +30,6 @@ export type {
 } from './RealtimeConnectionPort';
 
 export type {
-  TranscriptionPort,
-  TranscriptionState,
-  TranscriptionConfig,
-  TranscriptSegmentEvent,
-  TranscriptionErrorEvent,
-  TranscriptionStateEvent,
-  TranscriptionEvent,
-  TranscriptionEventHandler,
-} from './TranscriptionPort';
-
-export type {
   SessionRepositoryPort,
   SessionHistoryEntry,
 } from './SessionRepositoryPort';

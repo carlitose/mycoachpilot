@@ -51,7 +51,6 @@ export { default as settingsReducer } from './settingsSlice';
 export {
   setConfig,
   setOpenaiApiKey,
-  setDeepgramApiKey,
   setDefaultMode,
   setDefaultTemplate,
   setCoachingStyle,

@@ -38,12 +38,9 @@ export class SessionMode extends ValueObject<SessionModeType> {
     return this._value === 'meeting_coach';
   }
 
-  requiresDeepgram(): boolean {
-    return this._value === 'meeting_coach';
-  }
-
   requiresOpenAI(): boolean {
-    return this._value === 'conversation' || this._value === 'meeting_coach';
+    // All modes now require OpenAI
+    return true;
   }
 
   static create(mode: SessionModeType): SessionMode {

@@ -1,9 +1,8 @@
-import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, TranscriptionPort, SessionRepositoryPort, ConfigRepositoryPort } from '@application/ports';
+import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, SessionRepositoryPort, ConfigRepositoryPort } from '@application/ports';
 import { SessionManager, CoachingEngine } from '@application/services';
 
 import {
   OpenAIRealtimeAdapter,
-  DeepgramAdapter,
   AudioCaptureAdapter,
   LocalStorageSessionRepository,
   LocalStorageConfigRepository,
@@ -18,7 +17,6 @@ import { store, ReduxEventBusAdapter } from '@infrastructure/state';
 let eventBus: EventBusPort | null = null;
 let audioCapture: AudioCapturePort | null = null;
 let realtimeConnection: RealtimeConnectionPort | null = null;
-let transcription: TranscriptionPort | null = null;
 let sessionRepository: SessionRepositoryPort | null = null;
 let configRepository: ConfigRepositoryPort | null = null;
 let sessionManager: SessionManager | null = null;
@@ -43,13 +41,6 @@ export function getRealtimeConnection(): RealtimeConnectionPort {
     realtimeConnection = new OpenAIRealtimeAdapter();
   }
   return realtimeConnection;
-}
-
-export function getTranscription(): TranscriptionPort {
-  if (!transcription) {
-    transcription = new DeepgramAdapter();
-  }
-  return transcription;
 }
 
 export function getSessionRepository(): SessionRepositoryPort {
@@ -84,7 +75,6 @@ export function getSessionManager(): SessionManager {
       eventBus: getEventBus(),
       audioCapture: getAudioCapture(),
       realtimeConnection: getRealtimeConnection(),
-      transcription: getTranscription(),
       coachingEngine: getCoachingEngine(),
     });
   }
@@ -96,7 +86,6 @@ export function resetContainer(): void {
   eventBus = null;
   audioCapture = null;
   realtimeConnection = null;
-  transcription = null;
   sessionRepository = null;
   configRepository = null;
   sessionManager = null;

@@ -159,9 +159,8 @@ export class Session extends AggregateRoot<SessionId> {
   static create(mode: SessionModeType, templateId?: string): Session {
     const id = SessionId.create();
     const sessionMode = SessionMode.create(mode);
-    const audioConfig = mode === 'meeting_coach'
-      ? AudioConfig.forDeepgram()
-      : AudioConfig.forOpenAI();
+    // All modes use OpenAI Realtime API at 24kHz
+    const audioConfig = AudioConfig.forOpenAI();
 
     return new Session(
       id,

@@ -1,13 +1,12 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 
-import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, TranscriptionPort, SessionRepositoryPort, ConfigRepositoryPort } from '@application/ports';
+import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, SessionRepositoryPort, ConfigRepositoryPort } from '@application/ports';
 import type { SessionManager } from '@application/services';
 
 import {
   getEventBus,
   getAudioCapture,
   getRealtimeConnection,
-  getTranscription,
   getSessionRepository,
   getConfigRepository,
   getSessionManager,
@@ -17,7 +16,6 @@ export interface ServiceContainer {
   eventBus: EventBusPort;
   audioCapture: AudioCapturePort;
   realtimeConnection: RealtimeConnectionPort;
-  transcription: TranscriptionPort;
   sessionRepository: SessionRepositoryPort;
   configRepository: ConfigRepositoryPort;
   sessionManager: SessionManager;
@@ -34,7 +32,6 @@ export function ContainerProvider({ children }: ContainerProviderProps): ReactNo
     eventBus: getEventBus(),
     audioCapture: getAudioCapture(),
     realtimeConnection: getRealtimeConnection(),
-    transcription: getTranscription(),
     sessionRepository: getSessionRepository(),
     configRepository: getConfigRepository(),
     sessionManager: getSessionManager(),

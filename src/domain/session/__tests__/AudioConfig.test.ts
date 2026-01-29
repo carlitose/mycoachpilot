@@ -43,13 +43,6 @@ describe('AudioConfig', () => {
       expect(config.sampleRate).toBe(24000);
     });
 
-    it('should create Deepgram config with 16kHz', () => {
-      const config = AudioConfig.forDeepgram();
-
-      expect(config.sampleRate).toBe(16000);
-      expect(config.micEnabled).toBe(true);
-    });
-
     it('should create OpenAI config with 24kHz', () => {
       const config = AudioConfig.forOpenAI();
 
@@ -134,7 +127,7 @@ describe('AudioConfig', () => {
 
     it('should return false for different configs', () => {
       const config1 = AudioConfig.forOpenAI();
-      const config2 = AudioConfig.forDeepgram();
+      const config2 = AudioConfig.create({ sampleRate: 16000 });
 
       expect(config1.equals(config2)).toBe(false);
     });

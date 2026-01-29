@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { CoachingStyleType } from '@domain/settings';
 import { ok, err } from '@domain/shared';
 
-import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, TranscriptionPort } from '../../ports';
+import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort } from '../../ports';
 import { CoachingEngine } from '../CoachingEngine';
 import { SessionManager, SessionManagerDependencies } from '../SessionManager';
 
@@ -12,7 +12,6 @@ describe('SessionManager', () => {
   let mockEventBus: EventBusPort;
   let mockAudioCapture: AudioCapturePort;
   let mockRealtimeConnection: RealtimeConnectionPort;
-  let mockTranscription: TranscriptionPort;
   let deps: SessionManagerDependencies;
   let manager: SessionManager;
 
@@ -48,20 +47,10 @@ describe('SessionManager', () => {
       onEvent: vi.fn().mockReturnValue(() => {}),
     };
 
-    mockTranscription = {
-      getState: vi.fn().mockReturnValue('disconnected'),
-      connect: vi.fn().mockResolvedValue(ok(undefined)),
-      disconnect: vi.fn(),
-      sendAudio: vi.fn(),
-      finalize: vi.fn(),
-      onEvent: vi.fn().mockReturnValue(() => {}),
-    };
-
     deps = {
       eventBus: mockEventBus,
       audioCapture: mockAudioCapture,
       realtimeConnection: mockRealtimeConnection,
-      transcription: mockTranscription,
     };
 
     manager = new SessionManager(deps);
@@ -176,54 +165,53 @@ describe('SessionManager', () => {
   });
 
   describe('startSession - meeting_coach mode', () => {
-    it('should start meeting coach session', async () => {
+    it('should start meeting coach session with OpenAI key', async () => {
       const result = await manager.startSession('meeting_coach', {
-        deepgramApiKey: 'dg-test-key-32-characters-long!!',
+        openaiApiKey: 'sk-test-key',
       });
 
       expect(result.isOk()).toBe(true);
       expect(manager.currentSession?.mode.toString()).toBe('meeting_coach');
     });
 
-    it('should fail without Deepgram API key', async () => {
+    it('should fail without OpenAI API key', async () => {
       const result = await manager.startSession('meeting_coach', {});
 
       expect(result.isOk()).toBe(false);
-      expect(result.unwrapErr().message).toContain('Deepgram API key');
+      expect(result.unwrapErr().message).toContain('OpenAI API key');
     });
 
-    it('should setup audio at 16kHz for Deepgram', async () => {
+    it('should setup audio at 24kHz for OpenAI', async () => {
       await manager.startSession('meeting_coach', {
-        deepgramApiKey: 'dg-test-key-32-characters-long!!',
+        openaiApiKey: 'sk-test-key',
       });
 
       expect(mockAudioCapture.startMicrophone).toHaveBeenCalledWith({
-        sampleRate: 16000,
+        sampleRate: 24000,
         micEnabled: true,
       });
     });
 
     it('should use mixed audio when tabAudioEnabled', async () => {
       await manager.startSession('meeting_coach', {
-        deepgramApiKey: 'dg-test-key-32-characters-long!!',
+        openaiApiKey: 'sk-test-key',
         audioConfig: { tabAudioEnabled: true },
       });
 
       expect(mockAudioCapture.startMixed).toHaveBeenCalled();
     });
 
-    it('should connect to transcription service', async () => {
+    it('should connect to realtime API in transcript-only mode', async () => {
       await manager.startSession('meeting_coach', {
-        deepgramApiKey: 'dg-test-key-32-characters-long!!',
+        openaiApiKey: 'sk-test-key',
       });
 
-      expect(mockTranscription.connect).toHaveBeenCalledWith({
-        apiKey: 'dg-test-key-32-characters-long!!',
-        diarize: true,
-        punctuate: true,
-        interimResults: true,
-        sampleRate: 16000,
-      });
+      expect(mockRealtimeConnection.connect).toHaveBeenCalledWith(
+        expect.objectContaining({
+          apiKey: 'sk-test-key',
+          transcriptOnly: true,
+        }),
+      );
     });
   });
 
@@ -290,7 +278,6 @@ describe('SessionManager', () => {
 
       expect(mockAudioCapture.stop).toHaveBeenCalled();
       expect(mockRealtimeConnection.disconnect).toHaveBeenCalled();
-      expect(mockTranscription.disconnect).toHaveBeenCalled();
     });
 
     it('should fail if no session', () => {
@@ -338,7 +325,7 @@ describe('SessionManager', () => {
 
     it('should fail in non-conversation mode', async () => {
       await manager.startSession('meeting_coach', {
-        deepgramApiKey: 'dg-test-key-32-characters-long!!',
+        openaiApiKey: 'sk-test-key',
       });
 
       const result = await manager.sendTextMessage('Hello');
@@ -401,7 +388,6 @@ describe('SessionManager', () => {
       });
 
       await managerWithCoaching.startSession('meeting_coach', {
-        deepgramApiKey: 'dg-test-key-32-characters-long!!',
         openaiApiKey: 'sk-test-key',
         coachingStyle: 'assertive',
         templateSystemPrompt: 'Be helpful',
@@ -430,65 +416,11 @@ describe('SessionManager', () => {
         coachingEngine: mockCoachingEngine,
       });
 
-      await managerWithCoaching.startSession('meeting_coach', {
-        deepgramApiKey: 'dg-test-key-32-characters-long!!',
-      });
+      // This should fail because meeting_coach requires openaiApiKey
+      const result = await managerWithCoaching.startSession('meeting_coach', {});
 
+      expect(result.isOk()).toBe(false);
       expect(setGeneratorSpy).not.toHaveBeenCalled();
-    });
-
-    it('should call CoachingEngine.processSegment when final segment arrives', async () => {
-      const mockCoachingEngine = new CoachingEngine(mockEventBus, {
-        sessionId: 'test-session',
-        coachingStyle: 'diplomatic' as CoachingStyleType,
-        templateSystemPrompt: 'Test prompt',
-        userSpeakerId: null,
-      });
-      const processSegmentSpy = vi.spyOn(mockCoachingEngine, 'processSegment').mockResolvedValue(null);
-
-      const managerWithCoaching = new SessionManager({
-        ...deps,
-        coachingEngine: mockCoachingEngine,
-      });
-
-      await managerWithCoaching.startSession('meeting_coach', {
-        deepgramApiKey: 'dg-test-key-32-characters-long!!',
-        openaiApiKey: 'sk-test-key',
-      });
-
-      // Simulate a transcription event callback
-      const transcriptionCallback = (mockTranscription.onEvent as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as
-        | ((event: {
-            type: string;
-            speakerId: number;
-            text: string;
-            startMs: number;
-            endMs: number;
-            confidence: number;
-            words: string[];
-            isFinal: boolean;
-          }) => void)
-        | undefined;
-
-      if (transcriptionCallback) {
-        transcriptionCallback({
-          type: 'segment',
-          speakerId: 0,
-          text: 'Hello, how are you?',
-          startMs: 0,
-          endMs: 1000,
-          confidence: 0.95,
-          words: ['Hello,', 'how', 'are', 'you?'],
-          isFinal: true,
-        });
-
-        // Give time for async processSegment to be called
-        await new Promise((resolve) => {
-          setTimeout(resolve, 10);
-        });
-
-        expect(processSegmentSpy).toHaveBeenCalled();
-      }
     });
   });
 });

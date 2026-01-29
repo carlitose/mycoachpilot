@@ -6,7 +6,6 @@ import type { AudioSourceOption, CLIContainer } from '../container';
 
 export interface SessionStartOptions {
   mode: SessionModeType;
-  deepgramKey?: string | undefined;
   openaiKey?: string | undefined;
   audioFile?: string | undefined;
   audioSource?: AudioSourceOption | undefined;
@@ -70,37 +69,6 @@ export async function startSession(
     }
   });
 
-  // Subscribe to transcription events for real-time output
-  let lastTranscriptInterimLength = 0;
-  container.transcription.onEvent((event) => {
-    if (event.type === 'segment') {
-      if (event.isFinal) {
-        // Clear any interim text before printing final
-        if (lastTranscriptInterimLength > 0) {
-          process.stdout.write(`\r${' '.repeat(lastTranscriptInterimLength)}\r`);
-          lastTranscriptInterimLength = 0;
-        }
-        process.stdout.write(
-          chalk.white(`[Speaker ${String(event.speakerId)}] ${event.text}\n`),
-        );
-      } else {
-        // Show interim with proper line clearing
-        const maxLen = 75;
-        const displayText = event.text.length > maxLen
-          ? `${event.text.slice(-maxLen)}...`
-          : event.text;
-        const line = chalk.gray(`  ... ${displayText}`);
-        if (lastTranscriptInterimLength > 0) {
-          process.stdout.write(`\r${' '.repeat(lastTranscriptInterimLength)}\r`);
-        }
-        process.stdout.write(line);
-        lastTranscriptInterimLength = line.length;
-      }
-    } else if (event.type === 'error') {
-      process.stderr.write(chalk.red(`Transcription error: ${event.message}\n`));
-    }
-  });
-
   // Finalize audio when file audio ends (for file-based input)
   container.audioCapture.onAudioEvent((event) => {
     if (event.type === 'ended') {
@@ -110,8 +78,6 @@ export async function startSession(
       if (options.mode === 'conversation') {
         container.realtimeConnection.triggerResponse();
       }
-      // For meeting_coach mode (Deepgram)
-      container.transcription.finalize();
     }
   });
 
@@ -166,7 +132,6 @@ export async function startSession(
   };
 
   const startOptions: {
-    deepgramApiKey?: string;
     openaiApiKey?: string;
     coachingStyle?: CoachingStyleType;
     audioConfig?: typeof audioConfig;
@@ -174,7 +139,6 @@ export async function startSession(
     coachingStyle: options.coachingStyle ?? 'diplomatic',
     audioConfig,
   };
-  if (options.deepgramKey) startOptions.deepgramApiKey = options.deepgramKey;
   if (options.openaiKey) startOptions.openaiApiKey = options.openaiKey;
 
   const result = await sessionManager.startSession(options.mode, startOptions);

@@ -1,6 +1,26 @@
 import { Message, TranscriptSegment, Speaker } from '@domain/transcript';
+import type { Word } from '@domain/transcript';
 
-import type { RealtimeEvent, TranscriptionEvent } from '../ports';
+import type { RealtimeEvent } from '../ports';
+
+export interface TranscriptionSegmentEvent {
+  type: 'segment';
+  speakerId: number;
+  text: string;
+  startMs: number;
+  endMs: number;
+  confidence: number;
+  words: Word[];
+  isFinal: boolean;
+}
+
+export interface TranscriptionErrorEvent {
+  type: 'error';
+  code: string;
+  message: string;
+}
+
+export type TranscriptionEvent = TranscriptionSegmentEvent | TranscriptionErrorEvent;
 
 export interface SessionEventState {
   messages: Message[];

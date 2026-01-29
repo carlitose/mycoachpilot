@@ -28,13 +28,8 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): React.JSX.Element {
   const {
     config,
-    saveDeepgramKey,
     saveOpenaiKey,
   } = useSettings();
-
-  const handleDeepgramKeyChange = (value: string): void => {
-    void saveDeepgramKey(value || null);
-  };
 
   const handleOpenaiKeyChange = (value: string): void => {
     void saveOpenaiKey(value || null);
@@ -56,23 +51,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
 
           <TabsContent value="api" className="mt-4 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="deepgram" className="flex items-center gap-2">
-                <Key className="h-4 w-4 text-muted-foreground" />
-                Deepgram API Key
-              </Label>
-              <Input
-                id="deepgram"
-                type="password"
-                placeholder="Enter your Deepgram API key"
-                value={config.deepgramApiKey ?? ''}
-                onChange={(e) => { handleDeepgramKeyChange(e.target.value); }}
-              />
-              <p className="text-xs text-muted-foreground">
-                Required for real-time transcription with speaker diarization
-              </p>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="openai" className="flex items-center gap-2">
                 <Key className="h-4 w-4 text-muted-foreground" />
                 OpenAI API Key
@@ -85,7 +63,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
                 onChange={(e) => { handleOpenaiKeyChange(e.target.value); }}
               />
               <p className="text-xs text-muted-foreground">
-                Required for AI coaching suggestions
+                Required for transcription and AI coaching suggestions
               </p>
             </div>
           </TabsContent>

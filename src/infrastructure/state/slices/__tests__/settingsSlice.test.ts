@@ -5,7 +5,6 @@ import { PREDEFINED_TEMPLATES } from '@domain/settings';
 import reducer, {
   setConfig,
   setOpenaiApiKey,
-  setDeepgramApiKey,
   setDefaultMode,
   setDefaultTemplate,
   setCoachingStyle,
@@ -26,7 +25,6 @@ describe('settingsSlice', () => {
   const defaultConfig = {
     id: 'default',
     openaiApiKey: null,
-    deepgramApiKey: null,
     defaultMode: 'conversation' as const,
     defaultTemplateId: 'general',
     coachingStyle: 'diplomatic' as const,
@@ -104,25 +102,6 @@ describe('settingsSlice', () => {
       const state = reducer(stateWithKey, setOpenaiApiKey(null));
 
       expect(state.config.openaiApiKey).toBeNull();
-    });
-  });
-
-  describe('setDeepgramApiKey', () => {
-    it('should set Deepgram API key', () => {
-      const state = reducer(initialState, setDeepgramApiKey('dg-test-key'));
-
-      expect(state.config.deepgramApiKey).toBe('dg-test-key');
-    });
-
-    it('should clear Deepgram API key with null', () => {
-      const stateWithKey: SettingsSliceState = {
-        ...initialState,
-        config: { ...defaultConfig, deepgramApiKey: 'dg-test' },
-      };
-
-      const state = reducer(stateWithKey, setDeepgramApiKey(null));
-
-      expect(state.config.deepgramApiKey).toBeNull();
     });
   });
 

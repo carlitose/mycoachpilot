@@ -38,7 +38,7 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
     resumeSession,
   } = useSession();
 
-  const { hasDeepgramKey } = useSettings();
+  const { hasOpenaiKey } = useSettings();
 
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [sessionName, setSessionName] = useState('');
@@ -70,7 +70,7 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
   };
 
   const handleStart = (): void => {
-    if (!hasDeepgramKey) {
+    if (!hasOpenaiKey) {
       onOpenSettings();
       return;
     }

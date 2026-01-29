@@ -24,7 +24,7 @@ describe('Session', () => {
       const session = Session.create('meeting_coach');
       const config = session.audioConfig.toJSON();
 
-      expect(config.sampleRate).toBe(16000); // Deepgram uses 16kHz
+      expect(config.sampleRate).toBe(24000); // All modes use OpenAI at 24kHz
     });
 
     it('should set templateId when provided', () => {

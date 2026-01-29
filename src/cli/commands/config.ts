@@ -15,7 +15,6 @@ export async function setKey(
   const updatedConfig = config ?? {
     id: 'default',
     openaiApiKey: null,
-    deepgramApiKey: null,
     defaultMode: 'conversation' as const,
     defaultTemplateId: 'general',
     coachingStyle: 'diplomatic' as const,
@@ -27,11 +26,8 @@ export async function setKey(
     case 'openai':
       updatedConfig.openaiApiKey = key;
       break;
-    case 'deepgram':
-      updatedConfig.deepgramApiKey = key;
-      break;
     default:
-      process.stderr.write(chalk.red(`Unknown service: ${service}. Use "openai" or "deepgram".\n`));
+      process.stderr.write(chalk.red(`Unknown service: ${service}. Use "openai".\n`));
       process.exit(1);
   }
 

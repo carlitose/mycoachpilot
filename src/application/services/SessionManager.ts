@@ -5,7 +5,7 @@ import type { CoachingStyleType } from '@domain/settings';
 import { Result, ok, err, SessionError, DomainEvent } from '@domain/shared';
 import { Message, TranscriptSegment, Speaker, MessageProps, TranscriptSegmentProps, SpeakerProps } from '@domain/transcript';
 
-import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, TranscriptionPort, RealtimeConfig, AudioChannelType } from '../ports';
+import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, RealtimeConfig, AudioChannelType } from '../ports';
 
 import type { CoachingEngine } from './CoachingEngine';
 import { createSuggestionGeneratorFn } from './CoachingIntegration';
@@ -15,7 +15,6 @@ export interface SessionManagerDependencies {
   eventBus: EventBusPort;
   audioCapture: AudioCapturePort;
   realtimeConnection: RealtimeConnectionPort;
-  transcription: TranscriptionPort;
   coachingEngine?: CoachingEngine;
 }
 
@@ -67,7 +66,6 @@ export class SessionManager {
       templateId?: string;
       audioConfig?: Partial<AudioConfigProps>;
       openaiApiKey?: string;
-      deepgramApiKey?: string;
       systemPrompt?: string;
       coachingStyle?: CoachingStyleType;
       templateSystemPrompt?: string;
@@ -249,7 +247,6 @@ export class SessionManager {
   private async setupMeetingCoachMode(
     session: Session,
     options: {
-      deepgramApiKey?: string;
       audioConfig?: Partial<AudioConfigProps>;
       openaiApiKey?: string;
       coachingStyle?: CoachingStyleType;
@@ -483,7 +480,6 @@ export class SessionManager {
       // Cleanup
       this.deps.audioCapture.stop();
       this.deps.realtimeConnection.disconnect();
-      this.deps.transcription.disconnect();
 
       // Unsubscribe from events
       this._unsubscribers.forEach((unsub) => { unsub(); });

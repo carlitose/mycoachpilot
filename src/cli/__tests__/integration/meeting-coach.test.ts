@@ -15,7 +15,6 @@ describe('Meeting Coach Integration', () => {
     it('should create all adapters', () => {
       expect(container.eventBus).toBeDefined();
       expect(container.audioCapture).toBeDefined();
-      expect(container.transcription).toBeDefined();
       expect(container.realtimeConnection).toBeDefined();
       expect(container.sessionRepository).toBeDefined();
       expect(container.configRepository).toBeDefined();
@@ -121,7 +120,6 @@ describe('Meeting Coach Integration', () => {
       const config = {
         id: 'default',
         openaiApiKey: 'sk-test',
-        deepgramApiKey: 'dg-test',
         defaultMode: 'meeting_coach' as const,
         defaultTemplateId: 'general',
         coachingStyle: 'diplomatic' as const,
@@ -176,10 +174,10 @@ describe('Meeting Coach Integration', () => {
   });
 
   describe('Session lifecycle (mock)', () => {
-    it('should fail to start meeting_coach without deepgram key', async () => {
+    it('should fail to start meeting_coach without openai key', async () => {
       const result = await container.sessionManager.startSession('meeting_coach', {});
       expect(result.isErr()).toBe(true);
-      expect(result.unwrapErr().message).toContain('Deepgram API key');
+      expect(result.unwrapErr().message).toContain('OpenAI API key');
     });
 
     it('should fail to start conversation without openai key', async () => {

@@ -7,7 +7,6 @@ import {
   InMemorySessionRepository,
   InMemoryConfigRepository,
   FileAudioCaptureAdapter,
-  NodeDeepgramAdapter,
   NodeOpenAIRealtimeAdapter,
   NodeMicrophoneAdapter,
 } from './adapters';
@@ -46,7 +45,6 @@ export interface CLIContainerOptions {
 export interface CLIContainer {
   eventBus: InMemoryEventBusAdapter;
   audioCapture: AudioCapturePort;
-  transcription: NodeDeepgramAdapter;
   realtimeConnection: NodeOpenAIRealtimeAdapter;
   sessionRepository: InMemorySessionRepository;
   configRepository: InMemoryConfigRepository;
@@ -76,7 +74,6 @@ function createAudioCapture(options: CLIContainerOptions): AudioCapturePort {
 export function createCLIContainer(options: CLIContainerOptions = {}): CLIContainer {
   const eventBus = new InMemoryEventBusAdapter();
   const audioCapture = createAudioCapture(options);
-  const transcription = new NodeDeepgramAdapter();
   const realtimeConnection = new NodeOpenAIRealtimeAdapter();
   const sessionRepository = new InMemorySessionRepository();
   const configRepository = new InMemoryConfigRepository();
@@ -92,14 +89,12 @@ export function createCLIContainer(options: CLIContainerOptions = {}): CLIContai
     eventBus,
     audioCapture,
     realtimeConnection,
-    transcription,
     coachingEngine,
   });
 
   return {
     eventBus,
     audioCapture,
-    transcription,
     realtimeConnection,
     sessionRepository,
     configRepository,

@@ -67,7 +67,6 @@ export function useSession() {
       ...(options.templateId !== undefined ? { templateId: options.templateId } : {}),
       ...(options.audioConfig !== undefined ? { audioConfig: options.audioConfig } : {}),
       ...(config?.openaiApiKey ? { openaiApiKey: config.openaiApiKey } : {}),
-      ...(config?.deepgramApiKey ? { deepgramApiKey: config.deepgramApiKey } : {}),
       ...(options.systemPrompt !== undefined ? { systemPrompt: options.systemPrompt } : {}),
     });
 

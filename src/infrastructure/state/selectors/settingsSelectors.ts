@@ -35,11 +35,6 @@ export const selectHasOpenaiKey = createSelector(
   (config) => config.openaiApiKey !== null && config.openaiApiKey.length > 0,
 );
 
-export const selectHasDeepgramKey = createSelector(
-  selectConfig,
-  (config) => config.deepgramApiKey !== null && config.deepgramApiKey.length > 0,
-);
-
 export const selectDefaultMode = createSelector(
   selectConfig,
   (config) => config.defaultMode,
@@ -81,7 +76,7 @@ export const selectCustomTemplates = createSelector(
 );
 
 export const selectCanUseMeetingCoach = createSelector(
-  selectHasDeepgramKey,
+  selectHasOpenaiKey,
   (hasKey) => hasKey,
 );
 

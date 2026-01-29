@@ -6,9 +6,6 @@
 // Realtime (OpenAI)
 export { OpenAIRealtimeAdapter } from './realtime';
 
-// Transcription (Deepgram)
-export { DeepgramAdapter } from './deepgram';
-
 // Audio Capture
 export { AudioCaptureAdapter } from './audio';
 

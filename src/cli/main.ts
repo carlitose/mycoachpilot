@@ -23,7 +23,6 @@ program
   .command('start')
   .description('Start a new coaching session')
   .option('-m, --mode <mode>', 'Session mode: meeting_coach, conversation, transcript_only', 'meeting_coach')
-  .option('--deepgram-key <key>', 'Deepgram API key (or set DEEPGRAM_API_KEY env)')
   .option('--openai-key <key>', 'OpenAI API key (or set OPENAI_API_KEY env)')
   .option('--audio-file <path>', 'Audio file to process (WAV format)')
   .option('--audio-source <source>', 'Live audio source: microphone, system, mixed (default: microphone)')
@@ -33,7 +32,6 @@ program
   .option('--coaching-style <style>', 'Coaching style: diplomatic, assertive, analytical, supportive', 'diplomatic')
   .action(async (opts: {
     mode: string;
-    deepgramKey?: string;
     openaiKey?: string;
     audioFile?: string;
     audioSource?: string;
@@ -91,7 +89,6 @@ program
 
     await startSession(container, {
       mode: opts.mode as SessionModeType,
-      deepgramKey: opts.deepgramKey ?? process.env['DEEPGRAM_API_KEY'],
       openaiKey: opts.openaiKey ?? process.env['OPENAI_API_KEY'],
       coachingStyle: (opts.coachingStyle as CoachingStyleType | undefined) ?? 'diplomatic',
       audioSource,
@@ -103,7 +100,7 @@ program
   .description('Manage configuration')
   .command('set-key')
   .description('Set an API key')
-  .argument('<service>', 'Service name: openai or deepgram')
+  .argument('<service>', 'Service name: openai')
   .argument('<key>', 'The API key value')
   .action(async (service: string, key: string) => {
     const container = createCLIContainer();

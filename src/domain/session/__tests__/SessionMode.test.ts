@@ -63,15 +63,9 @@ describe('SessionMode', () => {
   });
 
   describe('service requirements', () => {
-    it('requiresDeepgram returns true only for meeting_coach', () => {
-      expect(SessionMode.conversation().requiresDeepgram()).toBe(false);
-      expect(SessionMode.transcriptOnly().requiresDeepgram()).toBe(false);
-      expect(SessionMode.meetingCoach().requiresDeepgram()).toBe(true);
-    });
-
-    it('requiresOpenAI returns true for conversation and meeting_coach', () => {
+    it('requiresOpenAI returns true for all modes', () => {
       expect(SessionMode.conversation().requiresOpenAI()).toBe(true);
-      expect(SessionMode.transcriptOnly().requiresOpenAI()).toBe(false);
+      expect(SessionMode.transcriptOnly().requiresOpenAI()).toBe(true);
       expect(SessionMode.meetingCoach().requiresOpenAI()).toBe(true);
     });
   });

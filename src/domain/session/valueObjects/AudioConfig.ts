@@ -72,13 +72,6 @@ export class AudioConfig extends ValueObject<AudioConfigProps> {
     return new AudioConfig(DEFAULT_CONFIG);
   }
 
-  static forDeepgram(): AudioConfig {
-    return new AudioConfig({
-      ...DEFAULT_CONFIG,
-      sampleRate: 16000, // 16kHz for Deepgram
-    });
-  }
-
   static forOpenAI(): AudioConfig {
     return new AudioConfig({
       ...DEFAULT_CONFIG,

@@ -11,7 +11,6 @@ import {
   selectIsSaving,
   selectSettingsError,
   selectHasOpenaiKey,
-  selectHasDeepgramKey,
   selectDefaultMode,
   selectDefaultTemplateId,
   selectCoachingStyle,
@@ -20,7 +19,6 @@ import {
   selectCanUseConversation,
   setConfig,
   setOpenaiApiKey,
-  setDeepgramApiKey,
   setDefaultMode,
   setDefaultTemplate,
   setCoachingStyle,
@@ -45,7 +43,6 @@ export function useSettings() {
   const isSaving = useAppSelector(selectIsSaving);
   const error = useAppSelector(selectSettingsError);
   const hasOpenaiKey = useAppSelector(selectHasOpenaiKey);
-  const hasDeepgramKey = useAppSelector(selectHasDeepgramKey);
   const defaultMode = useAppSelector(selectDefaultMode);
   const defaultTemplate = useAppSelector(selectDefaultTemplateId);
   const coachingStyle = useAppSelector(selectCoachingStyle);
@@ -86,11 +83,6 @@ export function useSettings() {
     await configRepository.saveConfig({ ...config, openaiApiKey: key });
   }, [dispatch, config, configRepository]);
 
-  const saveDeepgramKey = useCallback(async (key: string | null) => {
-    dispatch(setDeepgramApiKey(key));
-    await configRepository.saveConfig({ ...config, deepgramApiKey: key });
-  }, [dispatch, config, configRepository]);
-
   const saveDefaultMode = useCallback(async (mode: SessionModeType) => {
     dispatch(setDefaultMode(mode));
     await configRepository.saveConfig({ ...config, defaultMode: mode });
@@ -123,7 +115,6 @@ export function useSettings() {
     isSaving,
     error,
     hasOpenaiKey,
-    hasDeepgramKey,
     defaultMode,
     defaultTemplate,
     coachingStyle,
@@ -134,7 +125,6 @@ export function useSettings() {
     // Actions
     loadSettings,
     saveOpenaiKey,
-    saveDeepgramKey,
     saveDefaultMode,
     saveDefaultTemplate,
     saveCoachingStyle,

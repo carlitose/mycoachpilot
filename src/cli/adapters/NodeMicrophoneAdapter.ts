@@ -93,7 +93,9 @@ export class NodeMicrophoneAdapter implements AudioCapturePort {
         if (!permResult.ok) return err(new Error('Microphone permission denied. Grant access in System Settings > Privacy & Security > Microphone'));
       }
 
-      if (source === 'system' || source === 'mixed') {
+      // Only request system audio permission if NOT using BlackHole (systemDeviceId)
+      // BlackHole is a regular input device and doesn't need TCC permissions
+      if ((source === 'system' || source === 'mixed') && !this.systemDeviceId) {
         const permResult = await this.requestPermission(ensureSystemAudioPermission, 'System audio');
         if (!permResult.ok) {
           if (source === 'mixed') {
@@ -101,7 +103,7 @@ export class NodeMicrophoneAdapter implements AudioCapturePort {
             systemAudioFailed = true;
           } else {
             process.stderr.write('\n' + getBlackHoleInstructions() + '\n\n');
-            return err(new Error('System audio permission denied. Use --input-device "BlackHole 2ch" as an alternative.'));
+            return err(new Error('System audio permission denied. Use --system-device "BlackHole 2ch" as an alternative.'));
           }
         }
       }

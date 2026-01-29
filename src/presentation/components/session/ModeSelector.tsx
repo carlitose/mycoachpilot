@@ -32,7 +32,7 @@ const modes: { value: SessionModeType; label: string; description: string; icon:
 ];
 
 export function ModeSelector({ value, onChange, disabled }: ModeSelectorProps): ReactNode {
-  const { canUseMeetingCoach, canUseConversation, hasOpenaiKey, hasDeepgramKey } = useSettings();
+  const { canUseMeetingCoach, canUseConversation, hasOpenaiKey } = useSettings();
 
   const getModeAvailability = (mode: SessionModeType): { available: boolean; reason?: string } => {
     switch (mode) {
@@ -43,11 +43,11 @@ export function ModeSelector({ value, onChange, disabled }: ModeSelectorProps): 
       case 'meeting_coach':
         return canUseMeetingCoach
           ? { available: true }
-          : { available: false, reason: 'Requires Deepgram API key' };
+          : { available: false, reason: 'Requires OpenAI API key' };
       case 'transcript_only':
-        return hasOpenaiKey || hasDeepgramKey
+        return hasOpenaiKey
           ? { available: true }
-          : { available: false, reason: 'Requires API key' };
+          : { available: false, reason: 'Requires OpenAI API key' };
       default:
         return { available: true };
     }

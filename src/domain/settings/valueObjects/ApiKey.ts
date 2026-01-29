@@ -1,6 +1,6 @@
 import { ValueObject } from '@domain/shared';
 
-export type ApiKeyService = 'openai' | 'deepgram';
+export type ApiKeyService = 'openai';
 
 export interface ApiKeyProps {
   key: string;
@@ -47,14 +47,8 @@ export class ApiKey extends ValueObject<ApiKeyProps> {
   }
 
   private validateFormat(): boolean {
-    switch (this._service) {
-      case 'openai':
-        return this._key.startsWith('sk-');
-      case 'deepgram':
-        return this._key.length >= 32;
-      default:
-        return true;
-    }
+    // Only OpenAI is supported - must start with 'sk-'
+    return this._key.startsWith('sk-');
   }
 
   toJSON(): ApiKeyProps {
@@ -68,10 +62,6 @@ export class ApiKey extends ValueObject<ApiKeyProps> {
 
   static openai(key: string): ApiKey {
     return ApiKey.create(key, 'openai');
-  }
-
-  static deepgram(key: string): ApiKey {
-    return ApiKey.create(key, 'deepgram');
   }
 
   static fromJSON(props: ApiKeyProps): ApiKey {
