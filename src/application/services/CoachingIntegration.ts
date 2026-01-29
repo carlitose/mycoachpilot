@@ -11,11 +11,17 @@ import { handleTranscriptionEvent, SessionEventState, TranscriptionEvent } from 
  */
 export function createSuggestionGeneratorFn(
   apiKey: string,
-  config: { coachingStyle: CoachingStyleType; templateSystemPrompt: string; userSpeakerId: number | null },
+  config: {
+    coachingStyle: CoachingStyleType;
+    templateSystemPrompt: string;
+    userSpeakerId: number | null;
+    suggestionModel?: string;
+  },
 ): (context: CoachingContext) => Promise<SuggestionProps | null> {
   return async (context: CoachingContext) => {
     const { createSuggestionGenerator } = await import('@infrastructure/adapters');
-    const generator = createSuggestionGenerator(apiKey, config);
+    const options = config.suggestionModel ? { model: config.suggestionModel } : undefined;
+    const generator = createSuggestionGenerator(apiKey, config, options);
     return generator(context);
   };
 }

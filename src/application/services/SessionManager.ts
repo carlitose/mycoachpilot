@@ -1,7 +1,8 @@
 /* eslint-disable max-lines */
 // SessionManager is a central orchestrator coordinating multiple services
 import { Session, SessionModeType, AudioConfigProps } from '@domain/session';
-import type { CoachingStyleType } from '@domain/settings';
+import type { CoachingStyleType, ReactivityConfigProps } from '@domain/settings';
+import { REACTIVITY_DEFAULTS } from '@domain/settings';
 import { Result, ok, err, SessionError, DomainEvent } from '@domain/shared';
 import { Message, TranscriptSegment, Speaker, MessageProps, TranscriptSegmentProps, SpeakerProps } from '@domain/transcript';
 
@@ -75,6 +76,7 @@ export class SessionManager {
       systemPrompt?: string;
       coachingStyle?: CoachingStyleType;
       templateSystemPrompt?: string;
+      reactivity?: ReactivityConfigProps;
     } = {},
   ): Promise<Result<Session, Error>> {
     if (this._state.session?.status.isActive()) {
@@ -257,6 +259,7 @@ export class SessionManager {
       openaiApiKey?: string;
       coachingStyle?: CoachingStyleType;
       templateSystemPrompt?: string;
+      reactivity?: ReactivityConfigProps;
     },
   ): Promise<Result<void, Error>> {
     // Meeting coach uses OpenAI Realtime for transcription
@@ -279,12 +282,15 @@ export class SessionManager {
     if (this.deps.coachingEngine) {
       const coachingStyle = options.coachingStyle ?? 'diplomatic';
       const templateSystemPrompt = options.templateSystemPrompt ?? 'You are a helpful meeting coach.';
+      const reactivity = options.reactivity ?? REACTIVITY_DEFAULTS;
 
       this.deps.coachingEngine.updateConfig({
         sessionId: session.id.toString(),
         coachingStyle,
         templateSystemPrompt,
         userSpeakerId: 0, // "You" is speaker 0
+        suggestionIntervalMs: reactivity.suggestionIntervalMs,
+        maxActiveSuggestions: reactivity.maxActiveSuggestions,
       });
 
       // Create and set suggestion generator
@@ -292,6 +298,7 @@ export class SessionManager {
         coachingStyle,
         templateSystemPrompt,
         userSpeakerId: 0,
+        suggestionModel: reactivity.suggestionModel,
       });
       this.deps.coachingEngine.setSuggestionGenerator(generator);
     }
@@ -333,11 +340,11 @@ export class SessionManager {
 
     // For mixed mode, use DUAL connections to prevent audio interleaving
     if (audioSourceType === 'mixed') {
-      return this.setupDualConnectionMeetingCoach(session, options.openaiApiKey);
+      return this.setupDualConnectionMeetingCoach(session, options.openaiApiKey, options.reactivity);
     }
 
     // For single-source modes (mic only or system only), use single connection
-    return this.setupSingleConnectionMeetingCoach(session, options.openaiApiKey, audioSourceType);
+    return this.setupSingleConnectionMeetingCoach(session, options.openaiApiKey, audioSourceType, options.reactivity);
   }
 
   /**
@@ -347,6 +354,7 @@ export class SessionManager {
   private async setupDualConnectionMeetingCoach(
     session: Session,
     apiKey: string,
+    reactivity?: ReactivityConfigProps,
   ): Promise<Result<void, Error>> {
     // Create TWO separate realtime connections
     this._micRealtime = new NodeOpenAIRealtimeAdapter();
@@ -371,11 +379,14 @@ export class SessionManager {
       }
     });
 
-    // Connect both realtime connections
+    // Connect both realtime connections with VAD settings from reactivity config
     const realtimeConfig: RealtimeConfig = {
       apiKey,
       vadEnabled: true,
+      vadThreshold: reactivity?.vadThreshold ?? REACTIVITY_DEFAULTS.vadThreshold,
+      vadSilenceDuration: reactivity?.vadSilenceDurationMs ?? REACTIVITY_DEFAULTS.vadSilenceDurationMs,
       transcriptOnly: true, // No AI responses, just transcription
+      transcriptionModel: reactivity?.transcriptionModel ?? REACTIVITY_DEFAULTS.transcriptionModel,
     };
 
     const [micResult, sysResult] = await Promise.all([
@@ -421,6 +432,7 @@ export class SessionManager {
     session: Session,
     apiKey: string,
     audioSourceType: string,
+    reactivity?: ReactivityConfigProps,
   ): Promise<Result<void, Error>> {
     // For single-source modes, use the injected realtimeConnection
     // Microphone: captured at 48kHz via coreaudio-node, needs resampling
@@ -436,11 +448,14 @@ export class SessionManager {
       }
     });
 
-    // Connect to OpenAI Realtime in transcript-only mode
+    // Connect to OpenAI Realtime in transcript-only mode with VAD settings from reactivity config
     const realtimeConfig: RealtimeConfig = {
       apiKey,
       vadEnabled: true,
+      vadThreshold: reactivity?.vadThreshold ?? REACTIVITY_DEFAULTS.vadThreshold,
+      vadSilenceDuration: reactivity?.vadSilenceDurationMs ?? REACTIVITY_DEFAULTS.vadSilenceDurationMs,
       transcriptOnly: true,
+      transcriptionModel: reactivity?.transcriptionModel ?? REACTIVITY_DEFAULTS.transcriptionModel,
     };
     const connectResult = await this.deps.realtimeConnection.connect(realtimeConfig);
     if (!connectResult.isOk()) {

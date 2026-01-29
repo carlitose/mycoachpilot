@@ -18,6 +18,8 @@ export interface RealtimeConfig {
   vadThreshold?: number;
   vadSilenceDuration?: number;
   transcriptOnly?: boolean;
+  /** Model for transcription (default: gpt-4o-mini-transcribe) */
+  transcriptionModel?: string;
 }
 
 export interface TranscriptEvent {

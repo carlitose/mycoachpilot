@@ -206,7 +206,9 @@ Based on this conversation, provide ONE helpful coaching suggestion for the user
 export function createSuggestionGenerator(
   apiKey: string,
   config: Omit<CoachingEngineConfig, 'sessionId'>,
+  options?: { model: string },
 ): (context: CoachingContext) => Promise<SuggestionProps | null> {
-  const generator = new OpenAISuggestionGenerator(apiKey);
+  const generatorOptions = options?.model ? { model: options.model } : undefined;
+  const generator = new OpenAISuggestionGenerator(apiKey, generatorOptions);
   return generator.createGenerator(config);
 }

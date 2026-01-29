@@ -15,6 +15,8 @@ const REALTIME_API_URL = 'wss://api.openai.com/v1/realtime';
 const TRANSCRIPTION_API_URL = 'wss://api.openai.com/v1/realtime?intent=transcription';
 const DEFAULT_MODEL = 'gpt-4o-realtime-preview-2024-12-17';
 const DEFAULT_TRANSCRIPTION_MODEL = 'gpt-4o-mini-transcribe';
+const DEFAULT_VAD_THRESHOLD = 0.5;
+const DEFAULT_VAD_SILENCE_DURATION_MS = 300; // Reduced from 500ms for faster segments
 
 export class NodeOpenAIRealtimeAdapter implements RealtimeConnectionPort {
   private ws: WebSocket | null = null;
@@ -181,8 +183,8 @@ export class NodeOpenAIRealtimeAdapter implements RealtimeConnectionPort {
     if (this.config.vadEnabled !== false) {
       sessionConfig.turn_detection = {
         type: 'server_vad',
-        threshold: this.config.vadThreshold ?? 0.5,
-        silence_duration_ms: this.config.vadSilenceDuration ?? 500,
+        threshold: this.config.vadThreshold ?? DEFAULT_VAD_THRESHOLD,
+        silence_duration_ms: this.config.vadSilenceDuration ?? DEFAULT_VAD_SILENCE_DURATION_MS,
         prefix_padding_ms: 300,
       };
     } else {
@@ -194,19 +196,19 @@ export class NodeOpenAIRealtimeAdapter implements RealtimeConnectionPort {
 
   private configureTranscriptionSession(): void {
     // Transcription-specific session configuration for intent=transcription endpoint
-    // Uses gpt-4o-mini-transcribe which is better than whisper-1
+    // Uses transcriptionModel from config (default: gpt-4o-mini-transcribe)
     const transcriptionConfig = {
       type: 'transcription_session.update',
       session: {
         input_audio_format: 'pcm16',
         input_audio_transcription: {
-          model: DEFAULT_TRANSCRIPTION_MODEL,
+          model: this.config?.transcriptionModel ?? DEFAULT_TRANSCRIPTION_MODEL,
         },
         turn_detection: {
           type: 'server_vad',
-          threshold: this.config?.vadThreshold ?? 0.5,
+          threshold: this.config?.vadThreshold ?? DEFAULT_VAD_THRESHOLD,
           prefix_padding_ms: 300,
-          silence_duration_ms: this.config?.vadSilenceDuration ?? 500,
+          silence_duration_ms: this.config?.vadSilenceDuration ?? DEFAULT_VAD_SILENCE_DURATION_MS,
         },
         input_audio_noise_reduction: {
           type: 'near_field',

@@ -15,6 +15,9 @@ import type { ClientEvent, ServerEvent, SessionConfig } from './types';
 
 const REALTIME_API_URL = 'wss://api.openai.com/v1/realtime';
 const DEFAULT_MODEL = 'gpt-4o-realtime-preview-2024-12-17';
+const DEFAULT_TRANSCRIPTION_MODEL = 'gpt-4o-mini-transcribe';
+const DEFAULT_VAD_THRESHOLD = 0.5;
+const DEFAULT_VAD_SILENCE_DURATION_MS = 300; // Reduced from 500ms for faster segments
 
 /**
  * OpenAI Realtime API Adapter
@@ -178,7 +181,7 @@ export class OpenAIRealtimeAdapter implements RealtimeConnectionPort {
       input_audio_format: 'pcm16',
       output_audio_format: 'pcm16',
       input_audio_transcription: {
-        model: 'whisper-1',
+        model: this.config.transcriptionModel ?? DEFAULT_TRANSCRIPTION_MODEL,
       },
     };
 
@@ -202,8 +205,8 @@ export class OpenAIRealtimeAdapter implements RealtimeConnectionPort {
     if (this.config.vadEnabled !== false) {
       sessionConfig.turn_detection = {
         type: 'server_vad',
-        threshold: this.config.vadThreshold ?? 0.5,
-        silence_duration_ms: this.config.vadSilenceDuration ?? 500,
+        threshold: this.config.vadThreshold ?? DEFAULT_VAD_THRESHOLD,
+        silence_duration_ms: this.config.vadSilenceDuration ?? DEFAULT_VAD_SILENCE_DURATION_MS,
         prefix_padding_ms: 300,
       };
     } else {

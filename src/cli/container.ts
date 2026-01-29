@@ -1,6 +1,8 @@
 import type { AudioCapturePort } from '../application/ports/AudioCapturePort';
 import { CoachingEngine } from '../application/services/CoachingEngine';
 import { SessionManager } from '../application/services/SessionManager';
+import { REACTIVITY_DEFAULTS } from '../domain/settings';
+import type { ReactivityConfigProps } from '../domain/settings';
 
 import {
   InMemoryEventBusAdapter,
@@ -40,6 +42,11 @@ export interface CLIContainerOptions {
    * If specified, uses this device for system audio instead of native SystemAudioRecorder.
    */
   systemDevice?: string | undefined;
+  /**
+   * Reactivity configuration for VAD, coaching, and model settings.
+   * Controls how responsive transcription and suggestions are.
+   */
+  reactivity?: ReactivityConfigProps;
 }
 
 export interface CLIContainer {
@@ -50,6 +57,7 @@ export interface CLIContainer {
   configRepository: InMemoryConfigRepository;
   coachingEngine: CoachingEngine;
   sessionManager: SessionManager;
+  reactivity: ReactivityConfigProps;
 }
 
 /**
@@ -78,11 +86,19 @@ export function createCLIContainer(options: CLIContainerOptions = {}): CLIContai
   const sessionRepository = new InMemorySessionRepository();
   const configRepository = new InMemoryConfigRepository();
 
+  // Merge reactivity options with defaults
+  const reactivity: ReactivityConfigProps = {
+    ...REACTIVITY_DEFAULTS,
+    ...(options.reactivity ?? {}),
+  };
+
   const coachingEngine = new CoachingEngine(eventBus, {
     sessionId: '',
     coachingStyle: 'diplomatic',
     templateSystemPrompt: 'You are a helpful meeting coach.',
     userSpeakerId: null,
+    suggestionIntervalMs: reactivity.suggestionIntervalMs,
+    maxActiveSuggestions: reactivity.maxActiveSuggestions,
   });
 
   const sessionManager = new SessionManager({
@@ -100,5 +116,6 @@ export function createCLIContainer(options: CLIContainerOptions = {}): CLIContai
     configRepository,
     coachingEngine,
     sessionManager,
+    reactivity,
   };
 }

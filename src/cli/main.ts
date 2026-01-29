@@ -2,7 +2,8 @@ import 'dotenv/config';
 import { Command } from 'commander';
 
 import type { SessionModeType } from '../domain/session';
-import type { CoachingStyleType } from '../domain/settings/valueObjects/CoachingStyle';
+import { ReactivityConfig, REACTIVITY_DEFAULTS } from '../domain/settings';
+import type { ReactivityConfigProps, CoachingStyleType } from '../domain/settings';
 
 import { NodeMicrophoneAdapter } from './adapters/NodeMicrophoneAdapter';
 import { setKey } from './commands/config';
@@ -30,6 +31,14 @@ program
   .option('--system-device <device>', 'System audio device name or ID (e.g., "BlackHole 2ch") for mixed mode')
   .option('--list-devices', 'List available audio input devices and exit')
   .option('--coaching-style <style>', 'Coaching style: diplomatic, assertive, analytical, supportive', 'diplomatic')
+  // Reactivity options
+  .option('--vad-threshold <n>', `VAD speech threshold 0.1-1.0 (default: ${String(REACTIVITY_DEFAULTS.vadThreshold)})`)
+  .option('--vad-silence <ms>', `VAD silence before segment ends, 100-1000ms (default: ${String(REACTIVITY_DEFAULTS.vadSilenceDurationMs)})`)
+  .option('--suggestion-interval <ms>', `Min time between suggestions, 3000-30000ms (default: ${String(REACTIVITY_DEFAULTS.suggestionIntervalMs)})`)
+  .option('--max-suggestions <n>', `Max active suggestions, 1-10 (default: ${String(REACTIVITY_DEFAULTS.maxActiveSuggestions)})`)
+  // Model options
+  .option('--suggestion-model <model>', `Model for coaching suggestions (default: ${REACTIVITY_DEFAULTS.suggestionModel})`)
+  .option('--transcription-model <model>', `Model for transcription (default: ${REACTIVITY_DEFAULTS.transcriptionModel})`)
   .action(async (opts: {
     mode: string;
     openaiKey?: string;
@@ -39,6 +48,13 @@ program
     systemDevice?: string;
     listDevices?: boolean;
     coachingStyle?: string;
+    // Reactivity options
+    vadThreshold?: string;
+    vadSilence?: string;
+    suggestionInterval?: string;
+    maxSuggestions?: string;
+    suggestionModel?: string;
+    transcriptionModel?: string;
   }) => {
     // Handle --list-devices
     if (opts.listDevices) {
@@ -80,11 +96,36 @@ program
       ? 'file' as AudioSourceOption
       : (opts.audioSource as AudioSourceOption | undefined) ?? 'microphone';
 
+    // Parse reactivity options
+    const reactivityInput: Partial<ReactivityConfigProps> = {};
+    if (opts.vadThreshold !== undefined) {
+      reactivityInput.vadThreshold = parseFloat(opts.vadThreshold);
+    }
+    if (opts.vadSilence !== undefined) {
+      reactivityInput.vadSilenceDurationMs = parseInt(opts.vadSilence, 10);
+    }
+    if (opts.suggestionInterval !== undefined) {
+      reactivityInput.suggestionIntervalMs = parseInt(opts.suggestionInterval, 10);
+    }
+    if (opts.maxSuggestions !== undefined) {
+      reactivityInput.maxActiveSuggestions = parseInt(opts.maxSuggestions, 10);
+    }
+    if (opts.suggestionModel !== undefined) {
+      reactivityInput.suggestionModel = opts.suggestionModel;
+    }
+    if (opts.transcriptionModel !== undefined) {
+      reactivityInput.transcriptionModel = opts.transcriptionModel;
+    }
+
+    // Validate and merge with defaults
+    const reactivity = ReactivityConfig.validate(reactivityInput);
+
     const container = createCLIContainer({
       audioFilePath: opts.audioFile,
       audioSource,
       inputDevice: opts.inputDevice,
       systemDevice: opts.systemDevice,
+      reactivity,
     });
 
     await startSession(container, {
@@ -92,6 +133,7 @@ program
       openaiKey: opts.openaiKey ?? process.env['OPENAI_API_KEY'],
       coachingStyle: (opts.coachingStyle as CoachingStyleType | undefined) ?? 'diplomatic',
       audioSource,
+      reactivity,
     });
   });
 

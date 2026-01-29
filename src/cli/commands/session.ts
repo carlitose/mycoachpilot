@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 
 import type { SessionModeType } from '../../domain/session';
-import type { CoachingStyleType } from '../../domain/settings/valueObjects/CoachingStyle';
+import type { ReactivityConfigProps, CoachingStyleType } from '../../domain/settings';
 import type { AudioSourceOption, CLIContainer } from '../container';
 
 export interface SessionStartOptions {
@@ -10,6 +10,7 @@ export interface SessionStartOptions {
   audioFile?: string | undefined;
   audioSource?: AudioSourceOption | undefined;
   coachingStyle?: CoachingStyleType | undefined;
+  reactivity?: ReactivityConfigProps;
 }
 
 export async function startSession(
@@ -135,9 +136,11 @@ export async function startSession(
     openaiApiKey?: string;
     coachingStyle?: CoachingStyleType;
     audioConfig?: typeof audioConfig;
+    reactivity?: ReactivityConfigProps;
   } = {
     coachingStyle: options.coachingStyle ?? 'diplomatic',
     audioConfig,
+    reactivity: options.reactivity ?? container.reactivity,
   };
   if (options.openaiKey) startOptions.openaiApiKey = options.openaiKey;
 
