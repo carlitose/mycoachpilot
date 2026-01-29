@@ -29,7 +29,9 @@ import {
   findDeviceByName,
   detectBlackHoleDevices,
   getBlackHoleInstructions,
+  int16ToFloat32,
 } from './audioUtils';
+import { FfmpegAudioAdapter } from './FfmpegAudioAdapter';
 
 export type { AudioDeviceInfo };
 export type LiveAudioSourceType = 'microphone' | 'system' | 'mixed';
@@ -41,17 +43,19 @@ export interface NodeMicrophoneAdapterOptions {
   systemDevice?: string | undefined;
 }
 
-/** Native macOS audio capture adapter using coreaudio-node. */
+/** Native macOS audio capture adapter using coreaudio-node and FFmpeg. */
 export class NodeMicrophoneAdapter implements AudioCapturePort {
   private _state: AudioCaptureState = { isCapturing: false, source: null, sampleRate: 24000, channelCount: 1, error: null };
   private handlers = new Set<AudioEventHandler>();
   private micRecorder: MicrophoneRecorder | null = null;
   private systemRecorder: SystemAudioRecorder | null = null;
-  private blackHoleRecorder: MicrophoneRecorder | null = null;
+  private ffmpegAdapter: FfmpegAudioAdapter | null = null;
+  private ffmpegUnsubscribe: (() => void) | null = null;
   private isPaused = false;
   private lastPcm16Data: Int16Array | null = null;
   private inputDeviceId: string | null = null;
   private systemDeviceId: string | null = null;
+  private systemDeviceName: string | null = null;
 
   static listInputDevices = listInputDevices;
   static getDefaultInputDeviceId = getDefaultInputDeviceId;
@@ -61,6 +65,8 @@ export class NodeMicrophoneAdapter implements AudioCapturePort {
   constructor(options?: NodeMicrophoneAdapterOptions) {
     this.inputDeviceId = this.resolveDevice(options?.inputDevice, 'Input');
     this.systemDeviceId = this.resolveDevice(options?.systemDevice, 'System');
+    // Store original device name for FFmpeg (uses name, not ID)
+    this.systemDeviceName = options?.systemDevice ?? null;
   }
 
   private resolveDevice(device: string | undefined, label: string): string | null {
@@ -123,7 +129,7 @@ export class NodeMicrophoneAdapter implements AudioCapturePort {
       if (!startResult.ok) return err(startResult.error);
 
       // Determine final audio source
-      const hasSystemAudio = this.systemRecorder !== null || this.blackHoleRecorder !== null;
+      const hasSystemAudio = this.systemRecorder !== null || this.ffmpegAdapter !== null;
       const audioSource: AudioSourceType = source === 'system' ? 'tab' : (source === 'mixed' && !hasSystemAudio ? 'microphone' : source);
 
       this._state = { isCapturing: true, source: audioSource, sampleRate: targetSampleRate, channelCount: 1, error: null };
@@ -164,15 +170,24 @@ export class NodeMicrophoneAdapter implements AudioCapturePort {
   }
 
   private createSystemRecorder(source: LiveAudioSourceType, sampleRate: number, chunkMs: number): { ok: true } | { ok: false; error: Error } {
-    if (this.systemDeviceId) {
-      debug(`Creating BlackHole MicrophoneRecorder for system audio with device: ${this.systemDeviceId}...`);
+    if (this.systemDeviceId && this.systemDeviceName) {
+      // Use FFmpeg for BlackHole/virtual audio devices
+      // FFmpeg handles virtual audio devices more reliably than coreaudio-node
+      debug(`Creating FFmpeg adapter for system audio with device: ${this.systemDeviceName}...`);
       try {
-        this.blackHoleRecorder = this.createMicRecorder(sampleRate, chunkMs, this.systemDeviceId, 'system');
+        this.ffmpegAdapter = new FfmpegAudioAdapter();
+        // FFmpeg outputs at 24kHz directly (no resampling needed)
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        debug(`Failed to create BlackHole MicrophoneRecorder: ${msg}`);
-        if (source === 'mixed') { process.stderr.write(`\n⚠️  Failed to initialize system audio via ${this.systemDeviceId}: ${msg}\n   Falling back to microphone only.\n\n`); }
+        debug(`Failed to create FFmpeg adapter: ${msg}`);
+        if (source === 'mixed') { process.stderr.write(`\n⚠️  Failed to initialize FFmpeg for system audio via ${this.systemDeviceName}: ${msg}\n   Falling back to microphone only.\n\n`); }
         else return { ok: false, error: new Error(`Failed to initialize system audio capture: ${msg}`) };
+      }
+    } else if (this.systemDeviceId) {
+      // Fallback: systemDeviceId set but no name - shouldn't happen normally
+      debug(`Warning: systemDeviceId set but no systemDeviceName, skipping system audio`);
+      if (source !== 'mixed') {
+        return { ok: false, error: new Error('System device name required for system audio capture') };
       }
     } else {
       debug('Creating SystemAudioRecorder...');
@@ -205,9 +220,9 @@ export class NodeMicrophoneAdapter implements AudioCapturePort {
       }
     }
 
-    if (this.blackHoleRecorder) {
-      const result = await this.startSingleRecorder(this.blackHoleRecorder, 'BlackHole MicrophoneRecorder', source);
-      if (!result.ok) { if (source === 'system') return result; this.blackHoleRecorder = null; }
+    if (this.ffmpegAdapter && this.systemDeviceName) {
+      const result = await this.startFfmpegAdapter(source);
+      if (!result.ok) { if (source === 'system') return result; this.ffmpegAdapter = null; }
     }
 
     if (this.systemRecorder) {
@@ -215,11 +230,49 @@ export class NodeMicrophoneAdapter implements AudioCapturePort {
       if (!result.ok) { if (source === 'system') return result; this.systemRecorder = null; }
     }
 
-    if (!this.micRecorder && !this.systemRecorder && !this.blackHoleRecorder) {
+    if (!this.micRecorder && !this.systemRecorder && !this.ffmpegAdapter) {
       debug('No working recorders available');
       return { ok: false, error: new Error('No audio capture available. Both microphone and system audio failed to initialize.') };
     }
     return { ok: true };
+  }
+
+  private async startFfmpegAdapter(source: LiveAudioSourceType): Promise<{ ok: true } | { ok: false; error: Error }> {
+    if (!this.ffmpegAdapter || !this.systemDeviceName) {
+      return { ok: false, error: new Error('FFmpeg adapter not initialized') };
+    }
+
+    debug(`Starting FFmpeg adapter for device: ${this.systemDeviceName}...`);
+    try {
+      await this.ffmpegAdapter.start(this.systemDeviceName);
+
+      // Subscribe to FFmpeg audio output
+      // FFmpeg outputs Int16 at 24kHz - convert to Float32 for compatibility
+      this.ffmpegUnsubscribe = this.ffmpegAdapter.onAudio((int16) => {
+        if (!this.isPaused) {
+          const float32 = int16ToFloat32(int16);
+          this.lastPcm16Data = int16;
+          // Emit with sampleRate=24000 (FFmpeg already outputs at 24kHz)
+          this.emit({
+            type: 'audio',
+            data: float32,
+            sampleRate: 24000,
+            timestamp: Date.now(),
+            channel: 'system',
+          });
+        }
+      });
+
+      debug('FFmpeg adapter started successfully');
+      return { ok: true };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      debug(`FFmpeg adapter start failed: ${msg}`);
+      if (source === 'mixed' && this.micRecorder) {
+        process.stderr.write(`\n⚠️  Failed to start FFmpeg for system audio: ${msg}\n   Continuing with microphone only.\n\n`);
+      }
+      return { ok: false, error: new Error(`Failed to start system audio capture via FFmpeg: ${msg}`) };
+    }
   }
 
   private async startSingleRecorder(recorder: MicrophoneRecorder | SystemAudioRecorder, name: string, source: LiveAudioSourceType): Promise<{ ok: true } | { ok: false; error: Error }> {
@@ -253,8 +306,13 @@ export class NodeMicrophoneAdapter implements AudioCapturePort {
     this.micRecorder = null;
     this.systemRecorder?.stop().catch(() => { /* ignore */ });
     this.systemRecorder = null;
-    this.blackHoleRecorder?.stop().catch(() => { /* ignore */ });
-    this.blackHoleRecorder = null;
+    // Stop FFmpeg adapter for system audio
+    if (this.ffmpegUnsubscribe) {
+      this.ffmpegUnsubscribe();
+      this.ffmpegUnsubscribe = null;
+    }
+    this.ffmpegAdapter?.stop();
+    this.ffmpegAdapter = null;
     this.emit({ type: 'ended', timestamp: Date.now() });
     this._state = { ...this._state, isCapturing: false, source: null };
     this.isPaused = false;

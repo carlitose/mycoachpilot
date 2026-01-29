@@ -115,3 +115,16 @@ export function float32ToPCM16(float32Array: Float32Array): Int16Array {
   }
   return pcm16;
 }
+
+/**
+ * Resample audio from 48kHz to 24kHz (2:1 downsampling).
+ * This is needed because BlackHole and other virtual audio devices
+ * operate at 48kHz, but OpenAI Realtime API expects 24kHz.
+ */
+export function resample48to24(input: Int16Array): Int16Array {
+  const output = new Int16Array(Math.floor(input.length / 2));
+  for (let i = 0; i < output.length; i++) {
+    output[i] = input[i * 2] ?? 0;
+  }
+  return output;
+}

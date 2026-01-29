@@ -149,11 +149,7 @@ export function convertPcmToAudioEvent(
     data.length / 2,
   );
 
-  const float32Array = new Float32Array(int16Array.length);
-  for (let i = 0; i < int16Array.length; i++) {
-    const sample = int16Array[i] ?? 0;
-    float32Array[i] = sample / (sample < 0 ? 0x8000 : 0x7fff);
-  }
+  const float32Array = int16ToFloat32(int16Array);
 
   const event: AudioDataEvent = {
     type: 'audio',
@@ -163,4 +159,18 @@ export function convertPcmToAudioEvent(
   };
 
   return { float32Array, int16Array, event };
+}
+
+/**
+ * Convert Int16Array to Float32Array.
+ * Used for audio format conversion between PCM formats.
+ */
+export function int16ToFloat32(int16: Int16Array): Float32Array {
+  const float32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) {
+    const sample = int16[i] ?? 0;
+    // Normalize to [-1, 1] range
+    float32[i] = sample / (sample < 0 ? 0x8000 : 0x7fff);
+  }
+  return float32;
 }

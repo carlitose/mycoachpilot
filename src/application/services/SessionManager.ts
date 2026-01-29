@@ -5,11 +5,12 @@ import type { CoachingStyleType } from '@domain/settings';
 import { Result, ok, err, SessionError, DomainEvent } from '@domain/shared';
 import { Message, TranscriptSegment, Speaker, MessageProps, TranscriptSegmentProps, SpeakerProps } from '@domain/transcript';
 
-import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, RealtimeConfig, AudioChannelType } from '../ports';
+import { NodeOpenAIRealtimeAdapter } from '../../cli/adapters/NodeOpenAIRealtimeAdapter';
+import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, RealtimeConfig, RealtimeEvent } from '../ports';
 
 import type { CoachingEngine } from './CoachingEngine';
 import { createSuggestionGeneratorFn } from './CoachingIntegration';
-import { handleRealtimeEvent, float32ToPCM16 } from './SessionEventHandlers';
+import { handleRealtimeEvent, float32ToPCM16, resample48to24 } from './SessionEventHandlers';
 
 export interface SessionManagerDependencies {
   eventBus: EventBusPort;
@@ -41,6 +42,11 @@ export class SessionManager {
 
   private _unsubscribers: Array<() => void> = [];
   private _audioUnsubscriber: (() => void) | null = null;
+
+  // Dual realtime connections for mixed audio mode (meeting_coach)
+  // Each channel gets its own connection to prevent audio interleaving
+  private _micRealtime: NodeOpenAIRealtimeAdapter | null = null;
+  private _systemRealtime: NodeOpenAIRealtimeAdapter | null = null;
 
   constructor(private readonly deps: SessionManagerDependencies) {}
 
@@ -253,8 +259,8 @@ export class SessionManager {
       templateSystemPrompt?: string;
     },
   ): Promise<Result<void, Error>> {
-    // Meeting coach now uses OpenAI Realtime for transcription (same as transcript_only)
-    // with channel-based speaker identification (mic = You, system = Others)
+    // Meeting coach uses OpenAI Realtime for transcription
+    // In mixed mode, we use TWO separate connections to prevent audio interleaving
     if (!options.openaiApiKey) {
       return err(SessionError.invalidConfiguration('OpenAI API key is required for meeting coach mode'));
     }
@@ -290,9 +296,6 @@ export class SessionManager {
       this.deps.coachingEngine.setSuggestionGenerator(generator);
     }
 
-    // Track last active channel for speaker identification
-    let lastActiveChannel: AudioChannelType | null = null;
-
     // Determine audio source
     const audioConfig = options.audioConfig as { audioSourceType?: string; tabAudioEnabled?: boolean } | undefined;
     let audioSourceType = audioConfig?.audioSourceType;
@@ -301,47 +304,143 @@ export class SessionManager {
     }
     audioSourceType = audioSourceType ?? 'microphone';
 
-    const sampleRate = 24000; // OpenAI requires 24kHz
+    // Capture at 48kHz (native rate for BlackHole and other virtual devices)
+    // We'll resample to 24kHz before sending to OpenAI
+    const captureSampleRate = 48000;
 
+    // Start audio capture based on source type
     let audioResult: Result<void, Error>;
     if (audioSourceType === 'mixed') {
       audioResult = await this.deps.audioCapture.startMixed({
-        sampleRate,
+        sampleRate: captureSampleRate,
         micEnabled: true,
         tabAudioEnabled: true,
       });
     } else if (audioSourceType === 'system') {
       audioResult = await this.deps.audioCapture.startTabAudio({
-        sampleRate,
+        sampleRate: captureSampleRate,
         micEnabled: false,
         tabAudioEnabled: true,
       });
     } else {
       audioResult = await this.deps.audioCapture.startMicrophone({
-        sampleRate,
+        sampleRate: captureSampleRate,
         micEnabled: true,
       });
     }
 
     if (!audioResult.isOk()) return err(audioResult.unwrapErr());
 
-    // Setup audio streaming to OpenAI Realtime with channel tracking
+    // For mixed mode, use DUAL connections to prevent audio interleaving
+    if (audioSourceType === 'mixed') {
+      return this.setupDualConnectionMeetingCoach(session, options.openaiApiKey);
+    }
+
+    // For single-source modes (mic only or system only), use single connection
+    return this.setupSingleConnectionMeetingCoach(session, options.openaiApiKey, audioSourceType);
+  }
+
+  /**
+   * Setup meeting coach with dual OpenAI Realtime connections for mixed audio.
+   * Each audio channel gets its own connection to prevent audio interleaving.
+   */
+  private async setupDualConnectionMeetingCoach(
+    session: Session,
+    apiKey: string,
+  ): Promise<Result<void, Error>> {
+    // Create TWO separate realtime connections
+    this._micRealtime = new NodeOpenAIRealtimeAdapter();
+    this._systemRealtime = new NodeOpenAIRealtimeAdapter();
+
+    // Route audio to appropriate connection based on channel
+    // Microphone: captured at 48kHz via coreaudio-node, needs resampling
+    // System (FFmpeg): captured at 24kHz directly, no resampling needed
     this._audioUnsubscriber = this.deps.audioCapture.onAudioEvent((event) => {
       if (event.type === 'audio' && this.isActive) {
-        // Track the last active channel for speaker identification
-        if (event.channel) {
-          lastActiveChannel = event.channel;
-        }
         const pcm16 = float32ToPCM16(event.data);
-        this.deps.realtimeConnection.sendAudio(pcm16);
+
+        // Only resample if captured at 48kHz (microphone via coreaudio-node)
+        // FFmpeg captures at 24kHz directly
+        const pcm16_24k = event.sampleRate === 48000 ? resample48to24(pcm16) : pcm16;
+
+        if (event.channel === 'microphone') {
+          this._micRealtime?.sendAudio(pcm16_24k);
+        } else if (event.channel === 'system') {
+          this._systemRealtime?.sendAudio(pcm16_24k);
+        }
+      }
+    });
+
+    // Connect both realtime connections
+    const realtimeConfig: RealtimeConfig = {
+      apiKey,
+      vadEnabled: true,
+      transcriptOnly: true, // No AI responses, just transcription
+    };
+
+    const [micResult, sysResult] = await Promise.all([
+      this._micRealtime.connect(realtimeConfig),
+      this._systemRealtime.connect(realtimeConfig),
+    ]);
+
+    if (!micResult.isOk()) {
+      this.deps.audioCapture.stop();
+      this._micRealtime = null;
+      this._systemRealtime = null;
+      return err(micResult.unwrapErr());
+    }
+    if (!sysResult.isOk()) {
+      this._micRealtime.disconnect();
+      this.deps.audioCapture.stop();
+      this._micRealtime = null;
+      this._systemRealtime = null;
+      return err(sysResult.unwrapErr());
+    }
+
+    // Subscribe to mic transcripts → [You] (speaker 0)
+    this._unsubscribers.push(
+      this._micRealtime.onEvent((event) => {
+        this.handleMeetingCoachTranscript(event, 0, 'You', session);
+      }),
+    );
+
+    // Subscribe to system transcripts → [Others] (speaker 1)
+    this._unsubscribers.push(
+      this._systemRealtime.onEvent((event) => {
+        this.handleMeetingCoachTranscript(event, 1, 'Others', session);
+      }),
+    );
+
+    return ok(undefined);
+  }
+
+  /**
+   * Setup meeting coach with single OpenAI Realtime connection for single-source audio.
+   */
+  private async setupSingleConnectionMeetingCoach(
+    session: Session,
+    apiKey: string,
+    audioSourceType: string,
+  ): Promise<Result<void, Error>> {
+    // For single-source modes, use the injected realtimeConnection
+    // Microphone: captured at 48kHz via coreaudio-node, needs resampling
+    // System (FFmpeg): captured at 24kHz directly, no resampling needed
+    this._audioUnsubscriber = this.deps.audioCapture.onAudioEvent((event) => {
+      if (event.type === 'audio' && this.isActive) {
+        const pcm16 = float32ToPCM16(event.data);
+
+        // Only resample if captured at 48kHz
+        const pcm16_24k = event.sampleRate === 48000 ? resample48to24(pcm16) : pcm16;
+
+        this.deps.realtimeConnection.sendAudio(pcm16_24k);
       }
     });
 
     // Connect to OpenAI Realtime in transcript-only mode
     const realtimeConfig: RealtimeConfig = {
-      apiKey: options.openaiApiKey,
+      apiKey,
       vadEnabled: true,
-      transcriptOnly: true, // No AI responses, just transcription
+      transcriptOnly: true,
     };
     const connectResult = await this.deps.realtimeConnection.connect(realtimeConfig);
     if (!connectResult.isOk()) {
@@ -349,84 +448,96 @@ export class SessionManager {
       return err(connectResult.unwrapErr());
     }
 
+    // Determine speaker based on source type
+    const speakerId = audioSourceType === 'system' ? 1 : 0;
+    const speakerName = audioSourceType === 'system' ? 'Others' : 'You';
+
     // Subscribe to realtime transcript events
     this._unsubscribers.push(
       this.deps.realtimeConnection.onEvent((event) => {
-        if (event.type === 'transcript') {
-          // Determine speaker from channel: mic = You (0), system = Others (1)
-          const speakerId = lastActiveChannel === 'microphone' ? 0 : 1;
-
-          if (event.isFinal) {
-            // Create transcript segment with speaker info
-            const segment = TranscriptSegment.create(
-              speakerId,
-              event.text,
-              Date.now(), // startMs (approximate)
-              Date.now(), // endMs (approximate)
-              {
-                confidence: 1.0,
-                words: [],
-                isFinal: true,
-              },
-            );
-            this._state.segments.push(segment);
-            this._state.interimTranscript = null;
-
-            // Update speaker stats
-            const speaker = this._state.speakers.get(speakerId);
-            if (speaker) {
-              const wordCount = event.text.split(/\s+/).length;
-              speaker.addSegment(wordCount, 0);
-            }
-
-            // Emit SegmentReceived event for CLI output
-            this.deps.eventBus.publish({
-              eventType: 'SegmentReceived',
-              occurredAt: new Date(),
-              aggregateId: session.id.toString(),
-              payload: {
-                speakerId,
-                speakerName: speaker?.displayName ?? `Speaker ${String(speakerId)}`,
-                text: event.text,
-                isFinal: true,
-              },
-            } as DomainEvent);
-
-            // Trigger coaching on final segments from "Others" (speaker 1)
-            if (this.deps.coachingEngine) {
-              const context = {
-                recentSegments: this._state.segments.slice(-10).map((s) => s.toProps()),
-                speakers: Array.from(this._state.speakers.values()).map((s) => s.toProps()),
-                currentSpeaker: speakerId,
-                conversationTone: 'unknown' as const,
-              };
-              void this.deps.coachingEngine.processSegment(segment.toProps(), context);
-            }
-          } else {
-            this._state.interimTranscript = event.text;
-
-            // Emit interim segment for CLI output
-            const speaker = this._state.speakers.get(speakerId);
-            this.deps.eventBus.publish({
-              eventType: 'SegmentReceived',
-              occurredAt: new Date(),
-              aggregateId: session.id.toString(),
-              payload: {
-                speakerId,
-                speakerName: speaker?.displayName ?? `Speaker ${String(speakerId)}`,
-                text: event.text,
-                isFinal: false,
-              },
-            } as DomainEvent);
-          }
-        } else if (event.type === 'error') {
-          const errorMessage = Message.systemMessage(`Error: ${event.message}`);
-          this._state.messages.push(errorMessage);
-        }
+        this.handleMeetingCoachTranscript(event, speakerId, speakerName, session);
       }),
     );
 
     return ok(undefined);
+  }
+
+  /**
+   * Handle transcript events for meeting coach mode.
+   */
+  private handleMeetingCoachTranscript(
+    event: RealtimeEvent,
+    speakerId: number,
+    speakerName: string,
+    session: Session,
+  ): void {
+    if (event.type === 'transcript') {
+      if (event.isFinal) {
+        // Create transcript segment with speaker info
+        const segment = TranscriptSegment.create(
+          speakerId,
+          event.text,
+          Date.now(), // startMs (approximate)
+          Date.now(), // endMs (approximate)
+          {
+            confidence: 1.0,
+            words: [],
+            isFinal: true,
+          },
+        );
+        this._state.segments.push(segment);
+        this._state.interimTranscript = null;
+
+        // Update speaker stats
+        const speaker = this._state.speakers.get(speakerId);
+        if (speaker) {
+          const wordCount = event.text.split(/\s+/).length;
+          speaker.addSegment(wordCount, 0);
+        }
+
+        // Emit SegmentReceived event for CLI output
+        this.deps.eventBus.publish({
+          eventType: 'SegmentReceived',
+          occurredAt: new Date(),
+          aggregateId: session.id.toString(),
+          payload: {
+            speakerId,
+            speakerName,
+            text: event.text,
+            isFinal: true,
+          },
+        } as DomainEvent);
+
+        // Trigger coaching on final segments
+        if (this.deps.coachingEngine) {
+          const context = {
+            recentSegments: this._state.segments.slice(-10).map((s) => s.toProps()),
+            speakers: Array.from(this._state.speakers.values()).map((s) => s.toProps()),
+            currentSpeaker: speakerId,
+            conversationTone: 'unknown' as const,
+          };
+          void this.deps.coachingEngine.processSegment(segment.toProps(), context);
+        }
+      } else {
+        this._state.interimTranscript = event.text;
+
+        // Emit interim segment for CLI output
+        this.deps.eventBus.publish({
+          eventType: 'SegmentReceived',
+          occurredAt: new Date(),
+          aggregateId: session.id.toString(),
+          payload: {
+            speakerId,
+            speakerName,
+            text: event.text,
+            isFinal: false,
+          },
+        } as DomainEvent);
+      }
+    } else if (event.type === 'error') {
+      const errorMessage = Message.systemMessage(`Error: ${event.message}`);
+      this._state.messages.push(errorMessage);
+    }
   }
 
   pauseSession(): Result<void, Error> {
@@ -480,6 +591,16 @@ export class SessionManager {
       // Cleanup
       this.deps.audioCapture.stop();
       this.deps.realtimeConnection.disconnect();
+
+      // Disconnect dual realtime connections if used (mixed audio mode)
+      if (this._micRealtime) {
+        this._micRealtime.disconnect();
+        this._micRealtime = null;
+      }
+      if (this._systemRealtime) {
+        this._systemRealtime.disconnect();
+        this._systemRealtime = null;
+      }
 
       // Unsubscribe from events
       this._unsubscribers.forEach((unsub) => { unsub(); });
