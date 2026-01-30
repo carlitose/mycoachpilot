@@ -76,10 +76,14 @@ export class AudioCaptureAdapter implements AudioCapturePort {
       const sampleRate = config?.sampleRate ?? 24000;
 
       // Request tab audio capture
+      // Chrome requires video: true for getDisplayMedia - we stop the video track immediately
       this.tabStream = await navigator.mediaDevices.getDisplayMedia({
         audio: true,
-        video: false, // We only want audio
+        video: true,
       });
+
+      // Stop video track immediately - we only need audio
+      this.tabStream.getVideoTracks().forEach((t) => { t.stop(); });
 
       // Check if audio track exists
       const audioTracks = this.tabStream.getAudioTracks();
@@ -122,10 +126,14 @@ export class AudioCaptureAdapter implements AudioCapturePort {
       });
 
       // Then request tab audio
+      // Chrome requires video: true for getDisplayMedia - we stop the video track immediately
       this.tabStream = await navigator.mediaDevices.getDisplayMedia({
         audio: true,
-        video: false,
+        video: true,
       });
+
+      // Stop video track immediately - we only need audio
+      this.tabStream.getVideoTracks().forEach((t) => { t.stop(); });
 
       // Check if tab has audio
       const audioTracks = this.tabStream.getAudioTracks();

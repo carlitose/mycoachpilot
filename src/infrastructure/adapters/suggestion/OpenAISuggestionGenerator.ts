@@ -182,7 +182,7 @@ Based on this conversation, provide ONE helpful coaching suggestion for the user
         body: JSON.stringify({
           model: this.model,
           messages,
-          max_tokens: 500,
+          max_completion_tokens: 500,
           temperature: 0.7,
           response_format: { type: 'json_object' },
         }),
