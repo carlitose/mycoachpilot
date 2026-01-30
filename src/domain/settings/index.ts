@@ -10,6 +10,8 @@ export {
   CoachingStyle,
   ReactivityConfig,
   REACTIVITY_DEFAULTS,
+  CoachingPromptConfig,
+  COACHING_PROMPT_DEFAULTS,
 } from './valueObjects';
 export type {
   ApiKeyService,
@@ -17,6 +19,8 @@ export type {
   PredefinedTemplateId,
   CoachingStyleType,
   ReactivityConfigProps,
+  CoachingPromptConfigProps,
+  StyleDescriptions,
 } from './valueObjects';
 
 // Entities

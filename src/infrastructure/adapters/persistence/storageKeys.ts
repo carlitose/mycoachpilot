@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   SESSION_HISTORY: 'mcp_session_history',
   CUSTOM_TEMPLATES: 'mcp_custom_templates',
   REACTIVITY_CONFIG: 'mcp_reactivity_config',
+  COACHING_PROMPT_CONFIG: 'mcp_coaching_prompt_config',
 } as const;
 
 export const STORAGE_LIMITS = {

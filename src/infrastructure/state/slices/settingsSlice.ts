@@ -1,12 +1,13 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import type { SessionModeType } from '@domain/session';
-import type { UserConfigProps, TemplateProps, CoachingStyleType, ReactivityConfigProps } from '@domain/settings';
-import { PREDEFINED_TEMPLATES, REACTIVITY_DEFAULTS } from '@domain/settings';
+import type { UserConfigProps, TemplateProps, CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps } from '@domain/settings';
+import { PREDEFINED_TEMPLATES, REACTIVITY_DEFAULTS, COACHING_PROMPT_DEFAULTS } from '@domain/settings';
 
 export interface SettingsSliceState {
   config: UserConfigProps;
   reactivity: ReactivityConfigProps;
+  coachingPromptConfig: CoachingPromptConfigProps;
   templates: TemplateProps[];
   isLoading: boolean;
   isSaving: boolean;
@@ -26,6 +27,7 @@ const defaultConfig: UserConfigProps = {
 const initialState: SettingsSliceState = {
   config: defaultConfig,
   reactivity: { ...REACTIVITY_DEFAULTS },
+  coachingPromptConfig: { ...COACHING_PROMPT_DEFAULTS },
   templates: PREDEFINED_TEMPLATES,
   isLoading: false,
   isSaving: false,
@@ -133,6 +135,15 @@ export const settingsSlice = createSlice({
       state.reactivity = { ...REACTIVITY_DEFAULTS };
     },
 
+    // Coaching Prompt Config reducers
+    setCoachingPromptConfig: (state, action: PayloadAction<CoachingPromptConfigProps>) => {
+      state.coachingPromptConfig = action.payload;
+    },
+
+    resetCoachingPrompts: (state) => {
+      state.coachingPromptConfig = { ...COACHING_PROMPT_DEFAULTS };
+    },
+
     resetSettings: () => initialState,
   },
 });
@@ -161,6 +172,8 @@ export const {
   setRealtimeModel,
   setTranscriptionModel,
   resetReactivity,
+  setCoachingPromptConfig,
+  resetCoachingPrompts,
   resetSettings,
 } = settingsSlice.actions;
 

@@ -1,15 +1,17 @@
-import { Play, Pause, Square, Circle, Mic, MonitorSpeaker, AlertCircle } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { AlertCircle, Circle, Mic, MonitorSpeaker, Pause, Play, Square } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+
+import type { SessionModeType } from '@domain/shared';
 
 import { Alert, AlertDescription } from '@presentation/components/ui/alert';
 import { Button } from '@presentation/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogDescription,
 } from '@presentation/components/ui/dialog';
 import { Input } from '@presentation/components/ui/input';
 import { Label } from '@presentation/components/ui/label';
@@ -18,6 +20,7 @@ import { useSession, useSettings } from '@presentation/hooks';
 import { cn } from '@presentation/lib/utils';
 
 import { AudioVisualizer } from './AudioVisualizer';
+import { ModeDropdown } from './ModeDropdown';
 
 interface SessionControlsProps {
   onOpenSettings: () => void;
@@ -39,7 +42,8 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
     clearError,
   } = useSession();
 
-  const { hasOpenaiKey } = useSettings();
+  const { hasOpenaiKey, defaultMode, saveDefaultMode } = useSettings();
+  const [selectedMode, setSelectedMode] = useState<SessionModeType>(defaultMode);
 
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [sessionName, setSessionName] = useState('');
@@ -47,6 +51,15 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
   const [duration, setDuration] = useState(0);
 
   const sessionStatus = isActive ? (isPaused ? 'paused' : 'recording') : 'idle';
+
+  const handleModeChange = useCallback((mode: SessionModeType) => {
+    setSelectedMode(mode);
+    void saveDefaultMode(mode);
+  }, [saveDefaultMode]);
+
+  useEffect(() => {
+    setSelectedMode(defaultMode);
+  }, [defaultMode]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -71,9 +84,7 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
   };
 
   const handleStart = (): void => {
-    // Clear any stale errors from previous session attempts
     clearError();
-
     if (!hasOpenaiKey) {
       onOpenSettings();
       return;
@@ -85,7 +96,7 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
     if (!sessionName.trim()) return;
 
     await startSession({
-      mode: 'meeting_coach',
+      mode: selectedMode,
       audioConfig: {
         micEnabled: true,
         tabAudioEnabled: includeTabAudio,
@@ -96,20 +107,11 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
     setShowNameDialog(false);
     setSessionName('');
     setDuration(0);
-  }, [sessionName, includeTabAudio, startSession]);
+  }, [sessionName, includeTabAudio, startSession, selectedMode]);
 
-  const handlePause = useCallback(() => {
-    pauseSession();
-  }, [pauseSession]);
-
-  const handleResume = useCallback(() => {
-    resumeSession();
-  }, [resumeSession]);
-
-  const handleStop = useCallback(() => {
-    stopSession();
-    setDuration(0);
-  }, [stopSession]);
+  const handlePause = useCallback(() => { pauseSession(); }, [pauseSession]);
+  const handleResume = useCallback(() => { resumeSession(); }, [resumeSession]);
+  const handleStop = useCallback(() => { void stopSession(); setDuration(0); }, [stopSession]);
 
   const hasError = error?.message;
 
@@ -119,9 +121,7 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
         {hasError && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {error.message}
-            </AlertDescription>
+            <AlertDescription>{error.message}</AlertDescription>
           </Alert>
         )}
 
@@ -143,12 +143,18 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
             </span>
           </div>
 
+          {/* Mode Selector */}
+          {sessionStatus === 'idle' && (
+            <ModeDropdown
+              selectedMode={selectedMode}
+              onModeChange={handleModeChange}
+              disabled={isConnecting}
+            />
+          )}
+
           {/* Audio Level */}
           {sessionStatus === 'recording' && (
-            <AudioVisualizer
-              level={audioLevel}
-              isActive={isConnected}
-            />
+            <AudioVisualizer level={audioLevel} isActive={isConnected} />
           )}
 
           {/* Duration */}
@@ -172,32 +178,17 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
             ) : (
               <>
                 {sessionStatus === 'recording' ? (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handlePause}
-                    className="h-10 w-10 bg-transparent"
-                  >
+                  <Button variant="outline" size="icon" onClick={handlePause} className="h-10 w-10 bg-transparent">
                     <Pause className="h-5 w-5" />
                     <span className="sr-only">Pause</span>
                   </Button>
                 ) : (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleResume}
-                    className="h-10 w-10 bg-transparent"
-                  >
+                  <Button variant="outline" size="icon" onClick={handleResume} className="h-10 w-10 bg-transparent">
                     <Play className="h-5 w-5" />
                     <span className="sr-only">Resume</span>
                   </Button>
                 )}
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  onClick={handleStop}
-                  className="h-10 w-10"
-                >
+                <Button variant="destructive" size="icon" onClick={handleStop} className="h-10 w-10">
                   <Square className="h-4 w-4 fill-current" />
                   <span className="sr-only">Stop</span>
                 </Button>
@@ -218,21 +209,14 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
                   <span className="sr-only">Tab Audio</span>
                 </div>
               )}
-              <div
-                className={cn(
-                  'h-2 w-2 rounded-full',
-                  isConnected ? 'bg-success' : 'bg-warning'
-                )}
-              />
+              <div className={cn('h-2 w-2 rounded-full', isConnected ? 'bg-success' : 'bg-warning')} />
             </div>
           )}
 
           {/* Session Name */}
           {currentSession && (
             <div className="ml-auto text-right">
-              <p className="text-sm font-medium text-foreground">
-                {sessionName || 'Coaching Session'}
-              </p>
+              <p className="text-sm font-medium text-foreground">{sessionName || 'Coaching Session'}</p>
               <p className="text-xs text-muted-foreground">
                 Started at{' '}
                 {currentSession.startedAt
@@ -248,9 +232,7 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
         <DialogContent>
           <DialogHeader>
             <DialogTitle>New Coaching Session</DialogTitle>
-            <DialogDescription>
-              Give your session a name and configure audio sources
-            </DialogDescription>
+            <DialogDescription>Give your session a name and configure audio sources</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -260,9 +242,7 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
                 placeholder="e.g., Sales Call with Client X"
                 value={sessionName}
                 onChange={(e) => { setSessionName(e.target.value); }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void handleConfirmStart();
-                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleConfirmStart(); }}
                 autoFocus
               />
             </div>
@@ -277,10 +257,7 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
                   </p>
                 </div>
               </div>
-              <Switch
-                checked={includeTabAudio}
-                onCheckedChange={setIncludeTabAudio}
-              />
+              <Switch checked={includeTabAudio} onCheckedChange={setIncludeTabAudio} />
             </div>
 
             <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
@@ -289,9 +266,7 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowNameDialog(false); }}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => { setShowNameDialog(false); }}>Cancel</Button>
             <Button onClick={() => void handleConfirmStart()} disabled={!sessionName.trim()}>
               Start Recording
             </Button>

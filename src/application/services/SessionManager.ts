@@ -490,7 +490,7 @@ export class SessionManager {
   private handleMeetingCoachTranscript(
     event: RealtimeEvent,
     speakerId: number,
-    speakerName: string,
+    _speakerName: string,
     session: Session,
   ): void {
     if (event.type === 'transcript') {
@@ -517,17 +517,12 @@ export class SessionManager {
           speaker.addSegment(wordCount, 0);
         }
 
-        // Emit SegmentReceived event for CLI output
+        // Emit SegmentReceived event for UI and CLI output
         this.deps.eventBus.publish({
           eventType: 'SegmentReceived',
           occurredAt: new Date(),
           aggregateId: session.id.toString(),
-          payload: {
-            speakerId,
-            speakerName,
-            text: event.text,
-            isFinal: true,
-          },
+          payload: segment.toProps(),
         } as DomainEvent);
 
         // Trigger coaching on final segments
@@ -542,19 +537,8 @@ export class SessionManager {
         }
       } else {
         this._state.interimTranscript = event.text;
-
-        // Emit interim segment for CLI output
-        this.deps.eventBus.publish({
-          eventType: 'SegmentReceived',
-          occurredAt: new Date(),
-          aggregateId: session.id.toString(),
-          payload: {
-            speakerId,
-            speakerName,
-            text: event.text,
-            isFinal: false,
-          },
-        } as DomainEvent);
+        // Note: Interim transcripts are transient and not stored in Redux
+        // They are kept in SessionManager state and could be exposed separately if needed
       }
     } else if (event.type === 'error') {
       const errorMessage = Message.systemMessage(`Error: ${event.message}`);

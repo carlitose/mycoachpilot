@@ -72,85 +72,87 @@ export function SessionHistory({ sessions, onDeleteSession, onLoadSession }: Ses
         )}
       </div>
 
-      <ScrollArea className="flex-1 p-4">
-        {sessions.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center py-12 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-              <Calendar className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="mb-2 font-medium text-foreground">No Sessions Yet</h3>
-            <p className="max-w-[280px] text-sm text-muted-foreground">
-              Your completed coaching sessions will appear here
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {sessions.map((session) => (
-              <div
-                key={session.id}
-                className="group rounded-xl border border-border bg-background p-4 transition-colors hover:bg-muted/50"
-              >
-                <div className="flex items-start justify-between">
-                  <div
-                    className="flex-1 cursor-pointer"
-                    onClick={() => { onLoadSession(session.id); }}
-                  >
-                    <h3 className="font-medium text-foreground">{session.name}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {formatDate(session.startTime)}
-                    </p>
-                  </div>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
-                      >
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
-                        <span className="sr-only">Delete session</span>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Session</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete &quot;{session.name}&quot;? This
-                          action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => { onDeleteSession(session.id); }}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-
-                <div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="h-4 w-4" />
-                    {formatDuration(session.duration)}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <MessageSquare className="h-4 w-4" />
-                    {session.transcriptCount} entries
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles className="h-4 w-4" />
-                    {session.suggestionsCount} tips
-                  </div>
-                </div>
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <ScrollArea className="h-full p-4">
+          {sessions.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center py-12 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <Calendar className="h-8 w-8 text-muted-foreground" />
               </div>
-            ))}
-          </div>
-        )}
-      </ScrollArea>
+              <h3 className="mb-2 font-medium text-foreground">No Sessions Yet</h3>
+              <p className="max-w-[280px] text-sm text-muted-foreground">
+                Your completed coaching sessions will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className="group rounded-xl border border-border bg-background p-4 transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div
+                      className="flex-1 cursor-pointer"
+                      onClick={() => { onLoadSession(session.id); }}
+                    >
+                      <h3 className="font-medium text-foreground">{session.name}</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {formatDate(session.startTime)}
+                      </p>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+                        >
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          <span className="sr-only">Delete session</span>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Session</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete &quot;{session.name}&quot;? This
+                            action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => { onDeleteSession(session.id); }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="h-4 w-4" />
+                      {formatDuration(session.duration)}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <MessageSquare className="h-4 w-4" />
+                      {session.transcriptCount} entries
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4" />
+                      {session.suggestionsCount} tips
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
     </div>
   );
 }

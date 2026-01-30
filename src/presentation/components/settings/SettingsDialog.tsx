@@ -1,4 +1,6 @@
-import { Key, Globe, Mic2, Sparkles, Settings2, RotateCcw } from 'lucide-react';
+import { Globe, Key, Mic2, Sparkles } from 'lucide-react';
+
+import type { CoachingPromptConfigProps } from '@domain/settings';
 
 import { Button } from '@presentation/components/ui/button';
 import {
@@ -16,10 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@presentation/components/ui/select';
-import { Slider } from '@presentation/components/ui/slider';
 import { Switch } from '@presentation/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@presentation/components/ui/tabs';
 import { useSettings } from '@presentation/hooks';
+
+import { AdvancedTab } from './AdvancedTab';
+import { PromptsTab } from './PromptsTab';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -47,10 +51,31 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
     saveRealtimeModel,
     saveTranscriptionModel,
     resetReactivityToDefaults,
+    // Coaching Prompt Config
+    coachingPromptConfig,
+    saveCoachingPromptConfig,
+    resetCoachingPromptsToDefaults,
   } = useSettings();
 
   const handleOpenaiKeyChange = (value: string): void => {
     void saveOpenaiKey(value || null);
+  };
+
+  const handlePromptConfigChange = (updates: Partial<CoachingPromptConfigProps>): void => {
+    void saveCoachingPromptConfig({ ...coachingPromptConfig, ...updates });
+  };
+
+  const handleStyleDescriptionChange = (
+    style: keyof CoachingPromptConfigProps['styleDescriptions'],
+    value: string,
+  ): void => {
+    void saveCoachingPromptConfig({
+      ...coachingPromptConfig,
+      styleDescriptions: {
+        ...coachingPromptConfig.styleDescriptions,
+        [style]: value,
+      },
+    });
   };
 
   return (
@@ -61,10 +86,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
         </DialogHeader>
 
         <Tabs defaultValue="api" className="mt-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="api">API Keys</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="api">API</TabsTrigger>
             <TabsTrigger value="audio">Audio</TabsTrigger>
-            <TabsTrigger value="coach">AI Coach</TabsTrigger>
+            <TabsTrigger value="coach">Coach</TabsTrigger>
+            <TabsTrigger value="prompts">Prompts</TabsTrigger>
             <TabsTrigger value="advanced">Advanced</TabsTrigger>
           </TabsList>
 
@@ -150,162 +176,33 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
             </div>
           </TabsContent>
 
-          <TabsContent value="advanced" className="mt-4 space-y-6">
-            {/* Voice Detection Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Mic2 className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-medium">Voice Detection</h3>
-              </div>
+          <TabsContent value="prompts" className="mt-4">
+            <PromptsTab
+              coachingPromptConfig={coachingPromptConfig}
+              onConfigChange={handlePromptConfigChange}
+              onStyleDescriptionChange={handleStyleDescriptionChange}
+              onReset={() => { void resetCoachingPromptsToDefaults(); }}
+            />
+          </TabsContent>
 
-              <div className="space-y-3 pl-6">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="vadThreshold" className="text-xs">VAD Threshold</Label>
-                    <span className="text-xs text-muted-foreground">{vadThreshold.toFixed(2)}</span>
-                  </div>
-                  <Slider
-                    id="vadThreshold"
-                    value={vadThreshold}
-                    min={0.1}
-                    max={1.0}
-                    step={0.05}
-                    onValueChange={(value) => { void saveVadThreshold(value); }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Higher = less sensitive, fewer false triggers
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="vadSilence" className="text-xs">Silence Duration</Label>
-                    <span className="text-xs text-muted-foreground">{vadSilenceDuration}ms</span>
-                  </div>
-                  <Slider
-                    id="vadSilence"
-                    value={vadSilenceDuration}
-                    min={100}
-                    max={1000}
-                    step={50}
-                    onValueChange={(value) => { void saveVadSilenceDuration(value); }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Silence needed before ending a speech segment
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Coaching Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-medium">Coaching</h3>
-              </div>
-
-              <div className="space-y-3 pl-6">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="suggestionInterval" className="text-xs">Suggestion Interval</Label>
-                    <span className="text-xs text-muted-foreground">{Math.round(suggestionInterval / 1000)}s</span>
-                  </div>
-                  <Slider
-                    id="suggestionInterval"
-                    value={suggestionInterval}
-                    min={3000}
-                    max={30000}
-                    step={1000}
-                    onValueChange={(value) => { void saveSuggestionInterval(value); }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Time between coaching suggestions (3-30 seconds)
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="maxSuggestions" className="text-xs">Max Active Suggestions</Label>
-                    <span className="text-xs text-muted-foreground">{maxActiveSuggestions}</span>
-                  </div>
-                  <Slider
-                    id="maxSuggestions"
-                    value={maxActiveSuggestions}
-                    min={1}
-                    max={10}
-                    step={1}
-                    onValueChange={(value) => { void saveMaxActiveSuggestions(value); }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Maximum suggestions shown at once
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Models Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Settings2 className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-medium">Models</h3>
-              </div>
-
-              <div className="space-y-3 pl-6">
-                <div className="space-y-2">
-                  <Label htmlFor="suggestionModel" className="text-xs">Suggestion Model</Label>
-                  <Select value={suggestionModel} onValueChange={(value) => { void saveSuggestionModel(value); }}>
-                    <SelectTrigger id="suggestionModel">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="gpt-5.2">gpt-5.2 (Recommended)</SelectItem>
-                      <SelectItem value="gpt-5.2-pro">gpt-5.2-pro (Higher quality)</SelectItem>
-                      <SelectItem value="gpt-5-mini">gpt-5-mini (Fast)</SelectItem>
-                      <SelectItem value="gpt-5-nano">gpt-5-nano (Budget)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="realtimeModel" className="text-xs">Realtime Model</Label>
-                  <Select value={realtimeModel} onValueChange={(value) => { void saveRealtimeModel(value); }}>
-                    <SelectTrigger id="realtimeModel">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="gpt-realtime">gpt-realtime (Recommended)</SelectItem>
-                      <SelectItem value="gpt-realtime-mini">gpt-realtime-mini (Budget)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="transcriptionModel" className="text-xs">Transcription Model</Label>
-                  <Select value={transcriptionModel} onValueChange={(value) => { void saveTranscriptionModel(value); }}>
-                    <SelectTrigger id="transcriptionModel">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="gpt-4o-transcribe">gpt-4o-transcribe (Recommended)</SelectItem>
-                      <SelectItem value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe (Budget)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            {/* Reset Button */}
-            <div className="pt-2 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => { void resetReactivityToDefaults(); }}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Reset to Defaults
-              </Button>
-            </div>
+          <TabsContent value="advanced" className="mt-4">
+            <AdvancedTab
+              vadThreshold={vadThreshold}
+              vadSilenceDuration={vadSilenceDuration}
+              suggestionInterval={suggestionInterval}
+              maxActiveSuggestions={maxActiveSuggestions}
+              suggestionModel={suggestionModel}
+              realtimeModel={realtimeModel}
+              transcriptionModel={transcriptionModel}
+              onVadThresholdChange={(value) => { void saveVadThreshold(value); }}
+              onVadSilenceDurationChange={(value) => { void saveVadSilenceDuration(value); }}
+              onSuggestionIntervalChange={(value) => { void saveSuggestionInterval(value); }}
+              onMaxActiveSuggestionsChange={(value) => { void saveMaxActiveSuggestions(value); }}
+              onSuggestionModelChange={(value) => { void saveSuggestionModel(value); }}
+              onRealtimeModelChange={(value) => { void saveRealtimeModel(value); }}
+              onTranscriptionModelChange={(value) => { void saveTranscriptionModel(value); }}
+              onReset={() => { void resetReactivityToDefaults(); }}
+            />
           </TabsContent>
         </Tabs>
 

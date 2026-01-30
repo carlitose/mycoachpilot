@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import type { CoachingStyleType, ReactivityConfigProps } from '@domain/settings';
+import type { CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps } from '@domain/settings';
 import type { SessionModeType } from '@domain/shared';
 
 import { useContainer } from '../context';
@@ -44,6 +44,15 @@ export function useSettings() {
       const loadedReactivity = reactivityResult.unwrap();
       if (loadedReactivity !== null) {
         settingsState.setReactivity(loadedReactivity);
+      }
+    }
+
+    // Load coaching prompt config
+    const promptResult = await configRepository.getCoachingPromptConfig();
+    if (promptResult.isOk()) {
+      const loadedPromptConfig = promptResult.unwrap();
+      if (loadedPromptConfig !== null) {
+        settingsState.setCoachingPromptConfig(loadedPromptConfig);
       }
     }
 
@@ -127,6 +136,19 @@ export function useSettings() {
     await configRepository.saveReactivityConfig(config);
   }, [settingsState, configRepository]);
 
+  // Coaching Prompt Config save functions
+  const saveCoachingPromptConfig = useCallback(async (config: CoachingPromptConfigProps) => {
+    settingsState.setCoachingPromptConfig(config);
+    await configRepository.saveCoachingPromptConfig(config);
+  }, [settingsState, configRepository]);
+
+  const resetCoachingPromptsToDefaults = useCallback(async () => {
+    settingsState.resetCoachingPrompts();
+    // After reset, coaching prompts will have defaults - we need to save them
+    const { COACHING_PROMPT_DEFAULTS } = await import('@domain/settings');
+    await configRepository.saveCoachingPromptConfig({ ...COACHING_PROMPT_DEFAULTS });
+  }, [settingsState, configRepository]);
+
   return {
     // State (reactive values from port)
     config: settingsState.config,
@@ -144,6 +166,7 @@ export function useSettings() {
 
     // Reactivity state
     reactivity: settingsState.reactivity,
+    coachingPromptConfig: settingsState.coachingPromptConfig,
     vadThreshold: settingsState.vadThreshold,
     vadSilenceDuration: settingsState.vadSilenceDuration,
     suggestionInterval: settingsState.suggestionInterval,
@@ -171,5 +194,9 @@ export function useSettings() {
     saveTranscriptionModel,
     resetReactivityToDefaults,
     saveReactivityConfig,
+
+    // Coaching Prompt Config actions
+    saveCoachingPromptConfig,
+    resetCoachingPromptsToDefaults,
   };
 }

@@ -2,7 +2,7 @@
  * Settings State Port
  * Abstracts settings state access for Clean Architecture compliance
  */
-import type { UserConfigProps, TemplateProps, CoachingStyleType, ReactivityConfigProps } from '@domain/settings';
+import type { UserConfigProps, TemplateProps, CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps } from '@domain/settings';
 import type { SessionModeType } from '@domain/shared';
 
 /**
@@ -14,6 +14,7 @@ export interface SettingsStatePort {
   // Reactive values - automatically update when state changes
   config: UserConfigProps;
   reactivity: ReactivityConfigProps;
+  coachingPromptConfig: CoachingPromptConfigProps;
   templates: TemplateProps[];
   isLoading: boolean;
   isSaving: boolean;
@@ -39,6 +40,7 @@ export interface SettingsStatePort {
   // Actions - imperatively update state
   setConfig(config: UserConfigProps): void;
   setReactivity(reactivity: ReactivityConfigProps): void;
+  setCoachingPromptConfig(config: CoachingPromptConfigProps): void;
   setOpenaiApiKey(key: string | null): void;
   setDefaultMode(mode: SessionModeType): void;
   setDefaultTemplate(templateId: string): void;
@@ -60,5 +62,6 @@ export interface SettingsStatePort {
   setRealtimeModel(value: string): void;
   setTranscriptionModel(value: string): void;
   resetReactivity(): void;
+  resetCoachingPrompts(): void;
   resetSettings(): void;
 }

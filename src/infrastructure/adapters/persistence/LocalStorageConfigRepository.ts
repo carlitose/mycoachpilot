@@ -1,4 +1,4 @@
-import type { UserConfigProps, TemplateProps, ReactivityConfigProps } from '@domain/settings';
+import type { UserConfigProps, TemplateProps, ReactivityConfigProps, CoachingPromptConfigProps } from '@domain/settings';
 import { PREDEFINED_TEMPLATES } from '@domain/settings';
 import { ok, err, type Result } from '@domain/shared';
 
@@ -134,11 +134,33 @@ export class LocalStorageConfigRepository implements ConfigRepositoryPort {
     }
   }
 
+  getCoachingPromptConfig(): Promise<Result<CoachingPromptConfigProps | null, Error>> {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.COACHING_PROMPT_CONFIG);
+      if (!data) return Promise.resolve(ok(null));
+
+      const config = JSON.parse(data) as CoachingPromptConfigProps;
+      return Promise.resolve(ok(config));
+    } catch (error) {
+      return Promise.resolve(err(error instanceof Error ? error : new Error('Failed to load coaching prompt config')));
+    }
+  }
+
+  saveCoachingPromptConfig(config: CoachingPromptConfigProps): Promise<Result<void, Error>> {
+    try {
+      localStorage.setItem(STORAGE_KEYS.COACHING_PROMPT_CONFIG, JSON.stringify(config));
+      return Promise.resolve(ok(undefined));
+    } catch (error) {
+      return Promise.resolve(err(error instanceof Error ? error : new Error('Failed to save coaching prompt config')));
+    }
+  }
+
   resetToDefaults(): Promise<Result<void, Error>> {
     try {
       localStorage.removeItem(STORAGE_KEYS.USER_CONFIG);
       localStorage.removeItem(STORAGE_KEYS.CUSTOM_TEMPLATES);
       localStorage.removeItem(STORAGE_KEYS.REACTIVITY_CONFIG);
+      localStorage.removeItem(STORAGE_KEYS.COACHING_PROMPT_CONFIG);
       return Promise.resolve(ok(undefined));
     } catch (error) {
       return Promise.resolve(err(error instanceof Error ? error : new Error('Failed to reset config')));

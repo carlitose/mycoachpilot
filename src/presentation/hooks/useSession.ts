@@ -3,6 +3,8 @@ import { useCallback } from 'react';
 import type { SessionModeType, AudioConfigProps } from '@domain/session';
 import { REACTIVITY_DEFAULTS } from '@domain/settings';
 
+import type { SessionHistoryEntry } from '@application/ports';
+
 import { useContainer } from '../context';
 
 export interface UseSessionOptions {
@@ -14,7 +16,7 @@ export interface UseSessionOptions {
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useSession() {
-  const { sessionManager, configRepository, useSessionState, useTranscriptState, useCoachingState } = useContainer();
+  const { sessionManager, configRepository, sessionRepository, useSessionState, useTranscriptState, useCoachingState } = useContainer();
 
   // Get reactive state from ports
   const sessionState = useSessionState();
@@ -57,13 +59,27 @@ export function useSession() {
     }
   }, [sessionManager, configRepository, sessionState, transcriptState, coachingState]);
 
-  const stopSession = useCallback(() => {
+  const stopSession = useCallback(async () => {
+    // Save session to history before stopping
+    const currentSession = sessionState.currentSession;
+    if (currentSession) {
+      const entry: SessionHistoryEntry = {
+        session: currentSession,
+        messages: transcriptState.messages,
+        segments: transcriptState.segments,
+        speakers: transcriptState.speakers,
+        suggestions: coachingState.suggestions,
+        savedAt: new Date().toISOString(),
+      };
+      await sessionRepository.save(entry);
+    }
+
     const result = sessionManager.stopSession();
     if (result.isOk()) {
       sessionState.setConnectionState('disconnected');
     }
     return result.isOk();
-  }, [sessionManager, sessionState]);
+  }, [sessionManager, sessionState, transcriptState, coachingState, sessionRepository]);
 
   const pauseSession = useCallback(() => {
     const result = sessionManager.pauseSession();

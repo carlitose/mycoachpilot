@@ -10,6 +10,7 @@ import type { SettingsStatePort } from '@application/ports';
 import {
   selectCanUseConversation,
   selectCanUseMeetingCoach,
+  selectCoachingPromptConfig,
   selectCoachingStyle,
   selectConfig,
   selectCustomTemplates,
@@ -35,8 +36,10 @@ import {
 import {
   addTemplate,
   removeTemplate,
+  resetCoachingPrompts,
   resetReactivity,
   resetSettings,
+  setCoachingPromptConfig,
   setCoachingStyle,
   setConfig,
   setDefaultMode,
@@ -70,6 +73,7 @@ export function useReduxSettingsState(): SettingsStatePort {
   // Reactive values - call all selectors at top level (proper hooks usage)
   const config = useSelector((state: RootState) => selectConfig(state));
   const reactivity = useSelector((state: RootState) => selectReactivity(state));
+  const coachingPromptConfig = useSelector((state: RootState) => selectCoachingPromptConfig(state));
   const templates = useSelector((state: RootState) => selectTemplates(state));
   const isLoading = useSelector((state: RootState) => selectIsLoading(state));
   const isSaving = useSelector((state: RootState) => selectIsSaving(state));
@@ -96,6 +100,7 @@ export function useReduxSettingsState(): SettingsStatePort {
   const actions = useMemo(() => ({
     setConfig: (cfg: Parameters<SettingsStatePort['setConfig']>[0]) => dispatch(setConfig(cfg)),
     setReactivity: (r: Parameters<SettingsStatePort['setReactivity']>[0]) => dispatch(setReactivity(r)),
+    setCoachingPromptConfig: (c: Parameters<SettingsStatePort['setCoachingPromptConfig']>[0]) => dispatch(setCoachingPromptConfig(c)),
     setOpenaiApiKey: (key: Parameters<SettingsStatePort['setOpenaiApiKey']>[0]) => dispatch(setOpenaiApiKey(key)),
     setDefaultMode: (mode: Parameters<SettingsStatePort['setDefaultMode']>[0]) => dispatch(setDefaultMode(mode)),
     setDefaultTemplate: (templateId: Parameters<SettingsStatePort['setDefaultTemplate']>[0]) => dispatch(setDefaultTemplate(templateId)),
@@ -117,6 +122,7 @@ export function useReduxSettingsState(): SettingsStatePort {
     setRealtimeModel: (val: Parameters<SettingsStatePort['setRealtimeModel']>[0]) => dispatch(setRealtimeModel(val)),
     setTranscriptionModel: (val: Parameters<SettingsStatePort['setTranscriptionModel']>[0]) => dispatch(setTranscriptionModel(val)),
     resetReactivity: () => dispatch(resetReactivity()),
+    resetCoachingPrompts: () => dispatch(resetCoachingPrompts()),
     resetSettings: () => dispatch(resetSettings()),
   }), [dispatch]);
 
@@ -124,6 +130,7 @@ export function useReduxSettingsState(): SettingsStatePort {
     // Reactive values
     config,
     reactivity,
+    coachingPromptConfig,
     templates,
     isLoading,
     isSaving,

@@ -53,59 +53,61 @@ export function TranscriptPanel(): React.JSX.Element {
         )}
       </div>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        {segments.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center py-12 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-              <Users className="h-8 w-8 text-muted-foreground" />
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <ScrollArea className="h-full p-4" ref={scrollRef}>
+          {segments.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center py-12 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <Users className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="mb-2 font-medium text-foreground">No Transcript Yet</h3>
+              <p className="max-w-[280px] text-sm text-muted-foreground">
+                {sessionStatus === 'idle'
+                  ? 'Start a session to begin capturing the conversation'
+                  : 'Waiting for speech to be detected...'}
+              </p>
             </div>
-            <h3 className="mb-2 font-medium text-foreground">No Transcript Yet</h3>
-            <p className="max-w-[280px] text-sm text-muted-foreground">
-              {sessionStatus === 'idle'
-                ? 'Start a session to begin capturing the conversation'
-                : 'Waiting for speech to be detected...'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {segments.map((entry) => (
-              <div
-                key={entry.id}
-                className="group animate-in fade-in slide-in-from-bottom-2 duration-300"
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={cn(
-                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border',
-                      getSpeakerColor(entry.speakerId)
-                    )}
-                  >
-                    <User className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground">
-                        {getSpeakerName(entry.speakerId)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatTime(entry.startMs)}
-                      </span>
-                      {entry.confidence < 0.8 && (
-                        <span className="rounded bg-warning/10 px-1.5 py-0.5 text-xs text-warning">
-                          Low confidence
-                        </span>
+          ) : (
+            <div className="space-y-4">
+              {segments.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="group animate-in fade-in slide-in-from-bottom-2 duration-300"
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border',
+                        getSpeakerColor(entry.speakerId)
                       )}
+                    >
+                      <User className="h-4 w-4" />
                     </div>
-                    <p className="text-sm leading-relaxed text-foreground/90">
-                      {entry.text}
-                    </p>
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {getSpeakerName(entry.speakerId)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatTime(entry.startMs)}
+                        </span>
+                        {entry.confidence < 0.8 && (
+                          <span className="rounded bg-warning/10 px-1.5 py-0.5 text-xs text-warning">
+                            Low confidence
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm leading-relaxed text-foreground/90">
+                        {entry.text}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </ScrollArea>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
     </div>
   );
 }

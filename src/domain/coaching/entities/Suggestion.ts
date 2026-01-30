@@ -10,7 +10,7 @@ export interface SuggestionProps {
   content: string;
   context: string | null;
   confidence: number;
-  timestamp: Date;
+  timestamp: string;
   used: boolean;
   dismissed: boolean;
 }
@@ -103,7 +103,7 @@ export class Suggestion extends Entity<SuggestionId> {
       content: this._content,
       context: this._context,
       confidence: this._confidence,
-      timestamp: this._timestamp,
+      timestamp: this._timestamp.toISOString(),
       used: this._used,
       dismissed: this._dismissed,
     };

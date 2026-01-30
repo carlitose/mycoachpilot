@@ -1,4 +1,4 @@
-import type { UserConfigProps, TemplateProps, ReactivityConfigProps } from '@domain/settings';
+import type { UserConfigProps, TemplateProps, ReactivityConfigProps, CoachingPromptConfigProps } from '@domain/settings';
 import type { Result } from '@domain/shared';
 
 /**
@@ -50,4 +50,14 @@ export interface ConfigRepositoryPort {
    * Save reactivity configuration
    */
   saveReactivityConfig(config: ReactivityConfigProps): Promise<Result<void, Error>>;
+
+  /**
+   * Get coaching prompt configuration
+   */
+  getCoachingPromptConfig(): Promise<Result<CoachingPromptConfigProps | null, Error>>;
+
+  /**
+   * Save coaching prompt configuration
+   */
+  saveCoachingPromptConfig(config: CoachingPromptConfigProps): Promise<Result<void, Error>>;
 }

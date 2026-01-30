@@ -1,4 +1,5 @@
 import type { SuggestionProps, SuggestionTypeValue } from '@domain/coaching';
+import { COACHING_PROMPT_DEFAULTS } from '@domain/settings';
 
 import type { CoachingContext, CoachingEngineConfig } from '@application/services';
 
@@ -90,7 +91,7 @@ export class OpenAISuggestionGenerator {
         content: parsed.content,
         context: parsed.context ?? null,
         confidence: 0.8,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         used: false,
         dismissed: false,
       };
@@ -103,7 +104,7 @@ export class OpenAISuggestionGenerator {
         content: response,
         context: null,
         confidence: 0.7,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         used: false,
         dismissed: false,
       };
@@ -111,40 +112,20 @@ export class OpenAISuggestionGenerator {
   }
 
   private buildSystemPrompt(config: Omit<CoachingEngineConfig, 'sessionId'>): string {
-    const styleDescriptions: Record<string, string> = {
-      diplomatic: 'Provide tactful, balanced suggestions that consider multiple perspectives and maintain professional relationships.',
-      assertive: 'Provide direct, confident suggestions for clear and decisive communication.',
-      analytical: 'Provide data-driven, logical suggestions focused on facts, evidence, and structured arguments.',
-    };
+    const promptConfig = config.promptConfig ?? COACHING_PROMPT_DEFAULTS;
 
-    const styleInstruction = styleDescriptions[config.coachingStyle] ?? styleDescriptions['diplomatic'] ?? '';
+    // Get style description from config
+    const styleKey = config.coachingStyle as keyof typeof promptConfig.styleDescriptions;
+    const styleDescription = promptConfig.styleDescriptions[styleKey];
 
     return `${config.templateSystemPrompt}
 
-You are a real-time meeting coach. Your role is to analyze the ongoing conversation and provide helpful suggestions to the user.
+${promptConfig.baseInstructions}
 
 Coaching Style: ${config.coachingStyle}
-${styleInstruction}
+${styleDescription}
 
-IMPORTANT: Respond ONLY with a JSON object in this exact format:
-{
-  "type": "question" | "response_suggestion" | "talking_point" | "clarification" | "summary" | "objection_handling" | "closing" | "rapport_building" | "general",
-  "content": "Your suggestion text here",
-  "context": "Brief explanation of why this suggestion is relevant (optional)"
-}
-
-Types explained:
-- question: A question to ask the other party
-- response_suggestion: A suggested response to what was said
-- talking_point: A key point to make
-- clarification: A clarification to request
-- summary: A summary of key points
-- objection_handling: How to handle an objection
-- closing: A closing technique
-- rapport_building: Build rapport suggestion
-- general: A general coaching tip
-
-Keep suggestions concise (1-2 sentences) and immediately actionable.`;
+${promptConfig.formatInstructions}`;
   }
 
   private buildUserPrompt(context: CoachingContext): string {

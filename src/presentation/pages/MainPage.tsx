@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
 
 import { SuggestionsPanel } from '@presentation/components/coaching/SuggestionsPanel';
 import { SessionHistory } from '@presentation/components/history/SessionHistory';
@@ -6,22 +6,32 @@ import { Header } from '@presentation/components/layout/Header';
 import { SessionControls } from '@presentation/components/session/SessionControls';
 import { SettingsDialog } from '@presentation/components/settings/SettingsDialog';
 import { TranscriptPanel } from '@presentation/components/transcript/TranscriptPanel';
+import { useSessionHistory } from '@presentation/hooks/useSessionHistory';
 
 export function MainPage(): ReactNode {
   const [showSettings, setShowSettings] = useState(false);
+  const { history, deleteSession } = useSessionHistory();
 
-  // Mock session history data - in real app this would come from a hook
-  const sessions: { id: string; name: string; startTime: number; duration: number; transcriptCount: number; suggestionsCount: number }[] = [];
+  // Transform history entries to format expected by SessionHistory component
+  const sessions = history.map((entry) => ({
+    id: entry.session.id,
+    name: `Session ${entry.session.mode}`,
+    startTime: new Date(entry.session.startedAt ?? entry.savedAt).getTime(),
+    duration: entry.session.endedAt && entry.session.startedAt
+      ? new Date(entry.session.endedAt).getTime() - new Date(entry.session.startedAt).getTime()
+      : 0,
+    transcriptCount: entry.segments.length,
+    suggestionsCount: entry.suggestions.length,
+  }));
 
-  const handleDeleteSession = (id: string): void => {
-    // TODO: Implement delete functionality
+  const handleDeleteSession = useCallback((id: string): void => {
+    void deleteSession(id);
+  }, [deleteSession]);
+
+  const handleLoadSession = useCallback((id: string): void => {
+    // TODO: Implement load session functionality - restore transcript and suggestions
     void id;
-  };
-
-  const handleLoadSession = (id: string): void => {
-    // TODO: Implement load functionality
-    void id;
-  };
+  }, []);
 
   return (
     <div className="flex h-screen flex-col">

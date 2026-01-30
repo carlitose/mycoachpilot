@@ -67,67 +67,69 @@ export function SuggestionsPanel(): React.JSX.Element {
         )}
       </div>
 
-      <ScrollArea className="flex-1 p-4">
-        {activeSuggestions.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center py-12 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-              <Lightbulb className="h-8 w-8 text-muted-foreground" />
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <ScrollArea className="h-full p-4">
+          {activeSuggestions.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center py-12 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <Lightbulb className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="mb-2 font-medium text-foreground">
+                {sessionStatus === 'idle' ? 'Ready to Coach' : 'Analyzing...'}
+              </h3>
+              <p className="max-w-[280px] text-sm text-muted-foreground">
+                {sessionStatus === 'idle'
+                  ? 'Start a session to receive real-time coaching suggestions'
+                  : 'Listening to the conversation and preparing insights...'}
+              </p>
             </div>
-            <h3 className="mb-2 font-medium text-foreground">
-              {sessionStatus === 'idle' ? 'Ready to Coach' : 'Analyzing...'}
-            </h3>
-            <p className="max-w-[280px] text-sm text-muted-foreground">
-              {sessionStatus === 'idle'
-                ? 'Start a session to receive real-time coaching suggestions'
-                : 'Listening to the conversation and preparing insights...'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {activeSuggestions.map((suggestion) => {
-              const suggestionType = suggestion.type;
-              const Icon = suggestionIcons[suggestionType];
-              const colorClass = suggestionColors[suggestionType];
+          ) : (
+            <div className="space-y-3">
+              {activeSuggestions.map((suggestion) => {
+                const suggestionType = suggestion.type;
+                const Icon = suggestionIcons[suggestionType];
+                const colorClass = suggestionColors[suggestionType];
 
-              return (
-                <div
-                  key={suggestion.id}
-                  className={cn(
-                    'group relative animate-in fade-in slide-in-from-right-2 rounded-xl border p-4 duration-300',
-                    colorClass
-                  )}
-                >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-2 top-2 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={() => { dismissSuggestion(suggestion.id); }}
+                return (
+                  <div
+                    key={suggestion.id}
+                    className={cn(
+                      'group relative animate-in fade-in slide-in-from-right-2 rounded-xl border p-4 duration-300',
+                      colorClass
+                    )}
                   >
-                    <X className="h-4 w-4" />
-                    <span className="sr-only">Dismiss</span>
-                  </Button>
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background/50">
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">
-                          {suggestionLabels[suggestionType]}
-                        </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-2 top-2 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                      onClick={() => { dismissSuggestion(suggestion.id); }}
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Dismiss</span>
+                    </Button>
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background/50">
+                        <Icon className="h-4 w-4" />
                       </div>
-                      <p className="text-sm opacity-90">{suggestion.content}</p>
-                      <p className="text-xs opacity-60">
-                        {formatTime(suggestion.timestamp instanceof Date ? suggestion.timestamp.toISOString() : String(suggestion.timestamp))}
-                      </p>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            {suggestionLabels[suggestionType]}
+                          </span>
+                        </div>
+                        <p className="text-sm opacity-90">{suggestion.content}</p>
+                        <p className="text-xs opacity-60">
+                          {formatTime(suggestion.timestamp)}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </ScrollArea>
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
     </div>
   );
 }

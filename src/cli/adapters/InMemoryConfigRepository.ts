@@ -1,5 +1,5 @@
 import type { ConfigRepositoryPort } from '../../application/ports/ConfigRepositoryPort';
-import type { UserConfigProps, TemplateProps, ReactivityConfigProps } from '../../domain/settings';
+import type { UserConfigProps, TemplateProps, ReactivityConfigProps, CoachingPromptConfigProps } from '../../domain/settings';
 import { PREDEFINED_TEMPLATES } from '../../domain/settings';
 import { ok } from '../../domain/shared/Result';
 import type { Result } from '../../domain/shared/Result';
@@ -8,6 +8,7 @@ export class InMemoryConfigRepository implements ConfigRepositoryPort {
   private config: UserConfigProps | null = null;
   private templates = new Map<string, TemplateProps>();
   private reactivityConfig: ReactivityConfigProps | null = null;
+  private coachingPromptConfig: CoachingPromptConfigProps | null = null;
 
   constructor() {
     for (const t of PREDEFINED_TEMPLATES) {
@@ -46,6 +47,7 @@ export class InMemoryConfigRepository implements ConfigRepositoryPort {
     this.config = null;
     this.templates.clear();
     this.reactivityConfig = null;
+    this.coachingPromptConfig = null;
     for (const t of PREDEFINED_TEMPLATES) {
       this.templates.set(t.id, t);
     }
@@ -58,6 +60,15 @@ export class InMemoryConfigRepository implements ConfigRepositoryPort {
 
   saveReactivityConfig(config: ReactivityConfigProps): Promise<Result<void, Error>> {
     this.reactivityConfig = config;
+    return Promise.resolve(ok(undefined));
+  }
+
+  getCoachingPromptConfig(): Promise<Result<CoachingPromptConfigProps | null, Error>> {
+    return Promise.resolve(ok(this.coachingPromptConfig));
+  }
+
+  saveCoachingPromptConfig(config: CoachingPromptConfigProps): Promise<Result<void, Error>> {
+    this.coachingPromptConfig = config;
     return Promise.resolve(ok(undefined));
   }
 }

@@ -24,7 +24,7 @@ describe('coachingSlice', () => {
     content: 'Ask about their goals',
     context: 'Customer mentioned success',
     confidence: 0.85,
-    timestamp: new Date(),
+    timestamp: new Date().toISOString(),
     used: false,
     dismissed: false,
   };

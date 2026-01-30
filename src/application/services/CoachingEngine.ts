@@ -1,5 +1,5 @@
 import { Suggestion, SuggestionProps, SuggestionTypeValue } from '@domain/coaching';
-import type { CoachingStyleType } from '@domain/settings';
+import type { CoachingStyleType, CoachingPromptConfigProps } from '@domain/settings';
 import { DomainEvent } from '@domain/shared';
 import { TranscriptSegmentProps, SpeakerProps } from '@domain/transcript';
 
@@ -12,6 +12,7 @@ export interface CoachingEngineConfig {
   userSpeakerId: number | null;
   suggestionIntervalMs?: number; // Min interval between suggestions (default 15000)
   maxActiveSuggestions?: number; // Max suggestions to keep active (default 5)
+  promptConfig?: CoachingPromptConfigProps; // Custom prompt configuration
 }
 
 export interface CoachingContext {
@@ -239,7 +240,7 @@ Respond with JSON in this format:
         content: parsed.content,
         context: parsed.context ?? null,
         confidence: 0.8,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         used: false,
         dismissed: false,
       };

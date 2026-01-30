@@ -119,3 +119,9 @@ export const selectTranscriptionModel = createSelector(
   selectReactivity,
   (reactivity) => reactivity.transcriptionModel,
 );
+
+// Coaching Prompt Config selectors
+export const selectCoachingPromptConfig = createSelector(
+  selectSettings,
+  (settings) => settings.coachingPromptConfig,
+);
