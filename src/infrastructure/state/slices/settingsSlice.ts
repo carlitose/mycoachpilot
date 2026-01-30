@@ -121,6 +121,10 @@ export const settingsSlice = createSlice({
       state.reactivity.suggestionModel = action.payload;
     },
 
+    setRealtimeModel: (state, action: PayloadAction<string>) => {
+      state.reactivity.realtimeModel = action.payload;
+    },
+
     setTranscriptionModel: (state, action: PayloadAction<string>) => {
       state.reactivity.transcriptionModel = action.payload;
     },
@@ -154,6 +158,7 @@ export const {
   setSuggestionInterval,
   setMaxActiveSuggestions,
   setSuggestionModel,
+  setRealtimeModel,
   setTranscriptionModel,
   resetReactivity,
   resetSettings,

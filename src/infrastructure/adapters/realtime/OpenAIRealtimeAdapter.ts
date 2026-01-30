@@ -14,8 +14,8 @@ import type {
 import type { ClientEvent, ServerEvent, SessionConfig } from './types';
 
 const REALTIME_API_URL = 'wss://api.openai.com/v1/realtime';
-const DEFAULT_MODEL = 'gpt-4o-realtime-preview-2024-12-17';
-const DEFAULT_TRANSCRIPTION_MODEL = 'gpt-4o-mini-transcribe';
+const DEFAULT_MODEL = 'gpt-realtime';
+const DEFAULT_TRANSCRIPTION_MODEL = 'gpt-4o-transcribe';
 const DEFAULT_VAD_THRESHOLD = 0.5;
 const DEFAULT_VAD_SILENCE_DURATION_MS = 300; // Reduced from 500ms for faster segments
 

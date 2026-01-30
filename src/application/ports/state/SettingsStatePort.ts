@@ -33,6 +33,7 @@ export interface SettingsStatePort {
   suggestionInterval: number;
   maxActiveSuggestions: number;
   suggestionModel: string;
+  realtimeModel: string;
   transcriptionModel: string;
 
   // Actions - imperatively update state
@@ -56,6 +57,7 @@ export interface SettingsStatePort {
   setSuggestionInterval(value: number): void;
   setMaxActiveSuggestions(value: number): void;
   setSuggestionModel(value: string): void;
+  setRealtimeModel(value: string): void;
   setTranscriptionModel(value: string): void;
   resetReactivity(): void;
   resetSettings(): void;

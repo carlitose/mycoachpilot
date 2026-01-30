@@ -105,6 +105,11 @@ export function useSettings() {
     await configRepository.saveReactivityConfig({ ...settingsState.reactivity, suggestionModel: value });
   }, [settingsState, configRepository]);
 
+  const saveRealtimeModel = useCallback(async (value: string) => {
+    settingsState.setRealtimeModel(value);
+    await configRepository.saveReactivityConfig({ ...settingsState.reactivity, realtimeModel: value });
+  }, [settingsState, configRepository]);
+
   const saveTranscriptionModel = useCallback(async (value: string) => {
     settingsState.setTranscriptionModel(value);
     await configRepository.saveReactivityConfig({ ...settingsState.reactivity, transcriptionModel: value });
@@ -144,6 +149,7 @@ export function useSettings() {
     suggestionInterval: settingsState.suggestionInterval,
     maxActiveSuggestions: settingsState.maxActiveSuggestions,
     suggestionModel: settingsState.suggestionModel,
+    realtimeModel: settingsState.realtimeModel,
     transcriptionModel: settingsState.transcriptionModel,
 
     // Actions
@@ -161,6 +167,7 @@ export function useSettings() {
     saveSuggestionInterval,
     saveMaxActiveSuggestions,
     saveSuggestionModel,
+    saveRealtimeModel,
     saveTranscriptionModel,
     resetReactivityToDefaults,
     saveReactivityConfig,

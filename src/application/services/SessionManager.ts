@@ -387,6 +387,7 @@ export class SessionManager {
     // Connect both realtime connections with VAD settings from reactivity config
     const realtimeConfig: RealtimeConfig = {
       apiKey,
+      model: reactivity?.realtimeModel ?? REACTIVITY_DEFAULTS.realtimeModel,
       vadEnabled: true,
       vadThreshold: reactivity?.vadThreshold ?? REACTIVITY_DEFAULTS.vadThreshold,
       vadSilenceDuration: reactivity?.vadSilenceDurationMs ?? REACTIVITY_DEFAULTS.vadSilenceDurationMs,
@@ -456,6 +457,7 @@ export class SessionManager {
     // Connect to OpenAI Realtime in transcript-only mode with VAD settings from reactivity config
     const realtimeConfig: RealtimeConfig = {
       apiKey,
+      model: reactivity?.realtimeModel ?? REACTIVITY_DEFAULTS.realtimeModel,
       vadEnabled: true,
       vadThreshold: reactivity?.vadThreshold ?? REACTIVITY_DEFAULTS.vadThreshold,
       vadSilenceDuration: reactivity?.vadSilenceDurationMs ?? REACTIVITY_DEFAULTS.vadSilenceDurationMs,

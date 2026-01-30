@@ -36,6 +36,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
     suggestionInterval,
     maxActiveSuggestions,
     suggestionModel,
+    realtimeModel,
     transcriptionModel,
     // Reactivity actions
     saveVadThreshold,
@@ -43,6 +44,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
     saveSuggestionInterval,
     saveMaxActiveSuggestions,
     saveSuggestionModel,
+    saveRealtimeModel,
     saveTranscriptionModel,
     resetReactivityToDefaults,
   } = useSettings();
@@ -256,9 +258,23 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="gpt-4o-mini">gpt-4o-mini (Recommended)</SelectItem>
-                      <SelectItem value="gpt-4o">gpt-4o (Higher quality)</SelectItem>
-                      <SelectItem value="gpt-4-turbo">gpt-4-turbo</SelectItem>
+                      <SelectItem value="gpt-5.2">gpt-5.2 (Recommended)</SelectItem>
+                      <SelectItem value="gpt-5.2-pro">gpt-5.2-pro (Higher quality)</SelectItem>
+                      <SelectItem value="gpt-5-mini">gpt-5-mini (Fast)</SelectItem>
+                      <SelectItem value="gpt-5-nano">gpt-5-nano (Budget)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="realtimeModel" className="text-xs">Realtime Model</Label>
+                  <Select value={realtimeModel} onValueChange={(value) => { void saveRealtimeModel(value); }}>
+                    <SelectTrigger id="realtimeModel">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gpt-realtime">gpt-realtime (Recommended)</SelectItem>
+                      <SelectItem value="gpt-realtime-mini">gpt-realtime-mini (Budget)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -270,9 +286,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe (Recommended)</SelectItem>
-                      <SelectItem value="gpt-4o-transcribe">gpt-4o-transcribe (Higher quality)</SelectItem>
-                      <SelectItem value="whisper-1">whisper-1 (Legacy)</SelectItem>
+                      <SelectItem value="gpt-4o-transcribe">gpt-4o-transcribe (Recommended)</SelectItem>
+                      <SelectItem value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe (Budget)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

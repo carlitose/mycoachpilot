@@ -22,6 +22,7 @@ import {
   selectMaxActiveSuggestions,
   selectPredefinedTemplates,
   selectReactivity,
+  selectRealtimeModel,
   selectSettingsError,
   selectSuggestionInterval,
   selectSuggestionModel,
@@ -46,6 +47,7 @@ import {
   setMaxActiveSuggestions,
   setOpenaiApiKey,
   setReactivity,
+  setRealtimeModel,
   setSaving,
   setSuggestionInterval,
   setSuggestionModel,
@@ -87,6 +89,7 @@ export function useReduxSettingsState(): SettingsStatePort {
   const suggestionInterval = useSelector((state: RootState) => selectSuggestionInterval(state));
   const maxActiveSuggestions = useSelector((state: RootState) => selectMaxActiveSuggestions(state));
   const suggestionModel = useSelector((state: RootState) => selectSuggestionModel(state));
+  const realtimeModel = useSelector((state: RootState) => selectRealtimeModel(state));
   const transcriptionModel = useSelector((state: RootState) => selectTranscriptionModel(state));
 
   // Memoize actions to maintain stable references
@@ -111,6 +114,7 @@ export function useReduxSettingsState(): SettingsStatePort {
     setSuggestionInterval: (val: Parameters<SettingsStatePort['setSuggestionInterval']>[0]) => dispatch(setSuggestionInterval(val)),
     setMaxActiveSuggestions: (val: Parameters<SettingsStatePort['setMaxActiveSuggestions']>[0]) => dispatch(setMaxActiveSuggestions(val)),
     setSuggestionModel: (val: Parameters<SettingsStatePort['setSuggestionModel']>[0]) => dispatch(setSuggestionModel(val)),
+    setRealtimeModel: (val: Parameters<SettingsStatePort['setRealtimeModel']>[0]) => dispatch(setRealtimeModel(val)),
     setTranscriptionModel: (val: Parameters<SettingsStatePort['setTranscriptionModel']>[0]) => dispatch(setTranscriptionModel(val)),
     resetReactivity: () => dispatch(resetReactivity()),
     resetSettings: () => dispatch(resetSettings()),
@@ -139,6 +143,7 @@ export function useReduxSettingsState(): SettingsStatePort {
     suggestionInterval,
     maxActiveSuggestions,
     suggestionModel,
+    realtimeModel,
     transcriptionModel,
     // Actions
     ...actions,

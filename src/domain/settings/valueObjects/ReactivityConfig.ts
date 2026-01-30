@@ -13,8 +13,9 @@ export interface ReactivityConfigProps {
   maxActiveSuggestions: number; // 1-10, default 5
 
   // Model Settings
-  suggestionModel: string; // default: 'gpt-4o-mini'
-  transcriptionModel: string; // default: 'gpt-4o-mini-transcribe'
+  suggestionModel: string; // default: 'gpt-5.2'
+  realtimeModel: string; // default: 'gpt-realtime'
+  transcriptionModel: string; // default: 'gpt-4o-transcribe'
 }
 
 /**
@@ -25,8 +26,9 @@ export const REACTIVITY_DEFAULTS: Readonly<ReactivityConfigProps> = {
   vadSilenceDurationMs: 300, // Reduced from 500ms for faster transcript segments
   suggestionIntervalMs: 8000, // Reduced from 15000ms for more frequent suggestions
   maxActiveSuggestions: 5,
-  suggestionModel: 'gpt-4o-mini',
-  transcriptionModel: 'gpt-4o-mini-transcribe',
+  suggestionModel: 'gpt-5.2',
+  realtimeModel: 'gpt-realtime',
+  transcriptionModel: 'gpt-4o-transcribe',
 } as const;
 
 /**
@@ -106,6 +108,10 @@ export class ReactivityConfig {
       result.suggestionModel = props.suggestionModel.trim();
     }
 
+    if (props.realtimeModel !== undefined && props.realtimeModel.trim()) {
+      result.realtimeModel = props.realtimeModel.trim();
+    }
+
     if (props.transcriptionModel !== undefined && props.transcriptionModel.trim()) {
       result.transcriptionModel = props.transcriptionModel.trim();
     }
@@ -156,6 +162,10 @@ export class ReactivityConfig {
     return this.props.suggestionModel;
   }
 
+  get realtimeModel(): string {
+    return this.props.realtimeModel;
+  }
+
   get transcriptionModel(): string {
     return this.props.transcriptionModel;
   }
@@ -170,6 +180,7 @@ export class ReactivityConfig {
       this.props.suggestionIntervalMs !== REACTIVITY_DEFAULTS.suggestionIntervalMs ||
       this.props.maxActiveSuggestions !== REACTIVITY_DEFAULTS.maxActiveSuggestions ||
       this.props.suggestionModel !== REACTIVITY_DEFAULTS.suggestionModel ||
+      this.props.realtimeModel !== REACTIVITY_DEFAULTS.realtimeModel ||
       this.props.transcriptionModel !== REACTIVITY_DEFAULTS.transcriptionModel
     );
   }

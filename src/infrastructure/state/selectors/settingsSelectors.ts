@@ -116,6 +116,11 @@ export const selectSuggestionModel = createSelector(
   (reactivity) => reactivity.suggestionModel,
 );
 
+export const selectRealtimeModel = createSelector(
+  selectReactivity,
+  (reactivity) => reactivity.realtimeModel,
+);
+
 export const selectTranscriptionModel = createSelector(
   selectReactivity,
   (reactivity) => reactivity.transcriptionModel,

@@ -44,7 +44,7 @@ export class OpenAISuggestionGenerator {
 
   constructor(apiKey: string, options?: { model?: string; baseUrl?: string }) {
     this.apiKey = apiKey;
-    this.model = options?.model ?? 'gpt-4o-mini';
+    this.model = options?.model ?? 'gpt-5.2';
     this.baseUrl = options?.baseUrl ?? 'https://api.openai.com/v1';
   }
 
