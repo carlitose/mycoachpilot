@@ -1,5 +1,5 @@
 import { Message, TranscriptSegment, Speaker } from '@domain/transcript';
-import type { Word } from '@domain/transcript';
+import type { Word, TranscriptSegmentProps } from '@domain/transcript';
 
 import type { RealtimeEvent } from '../ports';
 
@@ -32,14 +32,48 @@ export interface SessionEventState {
 export function handleRealtimeEvent(
   event: RealtimeEvent,
   state: SessionEventState,
+  onSegment?: (segment: TranscriptSegmentProps) => void,
 ): void {
   switch (event.type) {
     case 'transcript':
       if (event.isFinal) {
+        // Create message
         const message = event.role === 'user'
           ? Message.userMessage(event.text)
           : Message.assistantMessage(event.text);
         state.messages.push(message);
+
+        // Create segment for transcript display (dialogue)
+        // Speaker 0 = User ("You"), Speaker 99999 = AI Assistant (reserved ID)
+        const AI_ASSISTANT_SPEAKER_ID = 99999;
+        const speakerId = event.role === 'user' ? 0 : AI_ASSISTANT_SPEAKER_ID;
+        const segment = TranscriptSegment.create(
+          speakerId,
+          event.text,
+          Date.now(),
+          Date.now(),
+          { confidence: 1.0, words: [], isFinal: true },
+        );
+        state.segments.push(segment);
+
+        // Ensure speakers exist (they should already from setupConversationMode, but safety check)
+        if (!state.speakers.has(0)) {
+          const userSpeaker = Speaker.create(0);
+          userSpeaker.setName('You');
+          userSpeaker.markAsUser();
+          state.speakers.set(0, userSpeaker);
+        }
+        if (speakerId === AI_ASSISTANT_SPEAKER_ID && !state.speakers.has(AI_ASSISTANT_SPEAKER_ID)) {
+          const aiSpeaker = Speaker.create(AI_ASSISTANT_SPEAKER_ID);
+          aiSpeaker.setName('AI Assistant');
+          state.speakers.set(AI_ASSISTANT_SPEAKER_ID, aiSpeaker);
+        }
+
+        // Call callback to publish event for Redux/UI
+        if (onSegment) {
+          onSegment(segment.toProps());
+        }
+
         state.interimTranscript = null;
       } else {
         state.interimTranscript = event.text;
@@ -47,6 +81,7 @@ export function handleRealtimeEvent(
       break;
 
     case 'response_text':
+      // Keep existing behavior for messages - this handles text-only responses
       if (event.isFinal && event.text) {
         const message = Message.assistantMessage(event.text);
         state.messages.push(message);

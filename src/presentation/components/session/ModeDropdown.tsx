@@ -69,7 +69,7 @@ export function ModeDropdown({
           return (
             <DropdownMenuItem
               key={mode}
-              onClick={() => { onModeChange(mode); }}
+              onSelect={() => { onModeChange(mode); }}
               className={cn('flex items-center gap-3 p-3', isSelected && 'bg-primary/10')}
             >
               <div className={cn(

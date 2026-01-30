@@ -97,6 +97,7 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
 
     await startSession({
       mode: selectedMode,
+      name: sessionName.trim(),
       audioConfig: {
         micEnabled: true,
         tabAudioEnabled: includeTabAudio,

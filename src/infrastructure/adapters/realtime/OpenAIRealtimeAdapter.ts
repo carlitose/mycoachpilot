@@ -14,6 +14,7 @@ import type {
 import type { ClientEvent, ServerEvent, SessionConfig } from './types';
 
 const REALTIME_API_URL = 'wss://api.openai.com/v1/realtime';
+const TRANSCRIPTION_API_URL = 'wss://api.openai.com/v1/realtime?intent=transcription';
 const DEFAULT_MODEL = 'gpt-realtime';
 const DEFAULT_TRANSCRIPTION_MODEL = 'gpt-4o-transcribe';
 const DEFAULT_VAD_THRESHOLD = 0.5;
@@ -47,7 +48,10 @@ export class OpenAIRealtimeAdapter implements RealtimeConnectionPort {
 
     try {
       const model = config.model ?? DEFAULT_MODEL;
-      const url = `${REALTIME_API_URL}?model=${model}`;
+      // Use transcription-specific endpoint for transcriptOnly mode (no AI responses)
+      const url = config.transcriptOnly
+        ? TRANSCRIPTION_API_URL
+        : `${REALTIME_API_URL}?model=${model}`;
 
       this.ws = new WebSocket(url, [
         'realtime',
@@ -176,8 +180,14 @@ export class OpenAIRealtimeAdapter implements RealtimeConnectionPort {
   private configureSession(): void {
     if (!this.ws || !this.config) return;
 
+    // Use transcription-specific configuration for transcriptOnly mode
+    if (this.config.transcriptOnly) {
+      this.configureTranscriptionSession();
+      return;
+    }
+
     const sessionConfig: Partial<SessionConfig> = {
-      modalities: this.config.transcriptOnly ? ['text'] : ['text', 'audio'],
+      modalities: ['text', 'audio'],
       input_audio_format: 'pcm16',
       output_audio_format: 'pcm16',
       input_audio_transcription: {
@@ -217,6 +227,36 @@ export class OpenAIRealtimeAdapter implements RealtimeConnectionPort {
       type: 'session.update',
       session: sessionConfig,
     });
+  }
+
+  /**
+   * Configure transcription-only session for intent=transcription endpoint.
+   * This endpoint only transcribes audio - NO AI responses.
+   */
+  private configureTranscriptionSession(): void {
+    if (!this.ws || !this.config) return;
+
+    // Transcription-specific session configuration for intent=transcription endpoint
+    // Uses 'transcription_session.update' message type instead of 'session.update'
+    const transcriptionConfig = {
+      type: 'transcription_session.update',
+      session: {
+        input_audio_format: 'pcm16',
+        input_audio_transcription: {
+          model: this.config.transcriptionModel ?? DEFAULT_TRANSCRIPTION_MODEL,
+        },
+        turn_detection: {
+          type: 'server_vad',
+          threshold: this.config.vadThreshold ?? DEFAULT_VAD_THRESHOLD,
+          prefix_padding_ms: 300,
+          silence_duration_ms: this.config.vadSilenceDuration ?? DEFAULT_VAD_SILENCE_DURATION_MS,
+        },
+      },
+    };
+
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(transcriptionConfig));
+    }
   }
 
   private send(event: ClientEvent): void {

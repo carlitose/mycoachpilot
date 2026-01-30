@@ -9,10 +9,15 @@ import { useContainer } from '../context';
 
 export interface UseSessionOptions {
   mode: SessionModeType;
+  name?: string;
   templateId?: string;
   audioConfig?: Partial<AudioConfigProps>;
   systemPrompt?: string;
 }
+
+// Module-level variable to store session name between start and stop
+// Safe because only one session is active at a time
+let currentSessionName: string | undefined;
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useSession() {
@@ -24,6 +29,8 @@ export function useSession() {
   const coachingState = useCoachingState();
 
   const startSession = useCallback(async (options: UseSessionOptions) => {
+    // Store the session name for later persistence (module-level variable)
+    currentSessionName = options.name;
     // Clear previous session state
     sessionState.resetSession();
     transcriptState.clearTranscript();
@@ -63,16 +70,26 @@ export function useSession() {
     // Save session to history before stopping
     const currentSession = sessionState.currentSession;
     if (currentSession) {
+      // Set endedAt manually before saving since sessionManager.stopSession() hasn't run yet
+      const endedAt = new Date().toISOString();
       const entry: SessionHistoryEntry = {
-        session: currentSession,
+        session: {
+          ...currentSession,
+          endedAt: new Date(endedAt),
+          status: 'stopped',
+        },
+        ...(currentSessionName !== undefined ? { name: currentSessionName } : {}),
         messages: transcriptState.messages,
         segments: transcriptState.segments,
         speakers: transcriptState.speakers,
         suggestions: coachingState.suggestions,
-        savedAt: new Date().toISOString(),
+        savedAt: endedAt,
       };
       await sessionRepository.save(entry);
     }
+
+    // Clear the session name
+    currentSessionName = undefined;
 
     const result = sessionManager.stopSession();
     if (result.isOk()) {

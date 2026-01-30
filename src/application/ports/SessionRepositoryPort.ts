@@ -8,6 +8,7 @@ import type { MessageProps, SpeakerProps, TranscriptSegmentProps } from '@domain
  */
 export interface SessionHistoryEntry {
   session: SessionProps;
+  name?: string; // User-entered session name
   messages: MessageProps[];
   segments: TranscriptSegmentProps[];
   speakers: SpeakerProps[];

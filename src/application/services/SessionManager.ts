@@ -126,43 +126,57 @@ export class SessionManager {
   }
 
   private async setupConversationMode(
-    _session: Session,
+    session: Session,
     options: { openaiApiKey?: string; systemPrompt?: string; audioConfig?: Partial<AudioConfigProps> },
   ): Promise<Result<void, Error>> {
     if (!options.openaiApiKey) {
       return err(SessionError.invalidConfiguration('OpenAI API key is required for conversation mode'));
     }
 
+    // Initialize speakers for conversation mode: "You" (user) and "AI Assistant"
+    const youSpeaker = Speaker.create(0);
+    youSpeaker.setName('You');
+    youSpeaker.markAsUser();
+    this._state.speakers.set(0, youSpeaker);
+
+    const AI_ASSISTANT_SPEAKER_ID = 99999;
+    const aiSpeaker = Speaker.create(AI_ASSISTANT_SPEAKER_ID);
+    aiSpeaker.setName('AI Assistant');
+    this._state.speakers.set(AI_ASSISTANT_SPEAKER_ID, aiSpeaker);
+
     // Start audio capture based on audioSourceType
     const audioSourceType = (options.audioConfig as { audioSourceType?: string } | undefined)?.audioSourceType ?? 'microphone';
-    const sampleRate = 24000; // OpenAI requires 24kHz
+    // Capture at 48kHz (native browser rate) for reliability - browsers often don't support 24kHz
+    const captureSampleRate = 48000;
 
     let audioResult: Result<void, Error>;
     if (audioSourceType === 'mixed') {
       audioResult = await this.deps.audioCapture.startMixed({
-        sampleRate,
+        sampleRate: captureSampleRate,
         micEnabled: true,
         tabAudioEnabled: true,
       });
     } else if (audioSourceType === 'system') {
       audioResult = await this.deps.audioCapture.startTabAudio({
-        sampleRate,
+        sampleRate: captureSampleRate,
         micEnabled: false,
         tabAudioEnabled: true,
       });
     } else {
       audioResult = await this.deps.audioCapture.startMicrophone({
-        sampleRate,
+        sampleRate: captureSampleRate,
         micEnabled: true,
       });
     }
     if (!audioResult.isOk()) return err(audioResult.unwrapErr());
 
-    // Setup audio streaming to realtime API
+    // Setup audio streaming to realtime API with resampling from 48kHz to 24kHz
     this._audioUnsubscriber = this.deps.audioCapture.onAudioEvent((event) => {
       if (event.type === 'audio' && this.isActive) {
         const pcm16 = float32ToPCM16(event.data);
-        this.deps.realtimeConnection.sendAudio(pcm16);
+        // Resample to 24kHz for OpenAI (if captured at 48kHz)
+        const pcm16_24k = event.sampleRate === 48000 ? resample48to24(pcm16) : pcm16;
+        this.deps.realtimeConnection.sendAudio(pcm16_24k);
       }
     });
 
@@ -181,7 +195,15 @@ export class SessionManager {
     // Subscribe to realtime events
     this._unsubscribers.push(
       this.deps.realtimeConnection.onEvent((event) => {
-        handleRealtimeEvent(event, this._state);
+        handleRealtimeEvent(event, this._state, (segment) => {
+          // Publish SegmentReceived event for Redux/UI
+          this.deps.eventBus.publish({
+            eventType: 'SegmentReceived',
+            occurredAt: new Date(),
+            aggregateId: session.id.toString(),
+            payload: segment,
+          } as DomainEvent);
+        });
       }),
     );
 
@@ -189,43 +211,52 @@ export class SessionManager {
   }
 
   private async setupTranscriptOnlyMode(
-    _session: Session,
+    session: Session,
     options: { openaiApiKey?: string; systemPrompt?: string; audioConfig?: Partial<AudioConfigProps> },
   ): Promise<Result<void, Error>> {
     if (!options.openaiApiKey) {
       return err(SessionError.invalidConfiguration('OpenAI API key is required for transcript mode'));
     }
 
+    // Initialize speakers for transcript-only mode: "You" (user)
+    const youSpeaker = Speaker.create(0);
+    youSpeaker.setName('You');
+    youSpeaker.markAsUser();
+    this._state.speakers.set(0, youSpeaker);
+
     // Start audio capture based on audioSourceType
     const audioSourceType = (options.audioConfig as { audioSourceType?: string } | undefined)?.audioSourceType ?? 'microphone';
-    const sampleRate = 24000; // OpenAI requires 24kHz
+    // Capture at 48kHz (native browser rate) for reliability - browsers often don't support 24kHz
+    const captureSampleRate = 48000;
 
     let audioResult: Result<void, Error>;
     if (audioSourceType === 'mixed') {
       audioResult = await this.deps.audioCapture.startMixed({
-        sampleRate,
+        sampleRate: captureSampleRate,
         micEnabled: true,
         tabAudioEnabled: true,
       });
     } else if (audioSourceType === 'system') {
       audioResult = await this.deps.audioCapture.startTabAudio({
-        sampleRate,
+        sampleRate: captureSampleRate,
         micEnabled: false,
         tabAudioEnabled: true,
       });
     } else {
       audioResult = await this.deps.audioCapture.startMicrophone({
-        sampleRate,
+        sampleRate: captureSampleRate,
         micEnabled: true,
       });
     }
     if (!audioResult.isOk()) return err(audioResult.unwrapErr());
 
-    // Setup audio streaming
+    // Setup audio streaming with resampling from 48kHz to 24kHz
     this._audioUnsubscriber = this.deps.audioCapture.onAudioEvent((event) => {
       if (event.type === 'audio' && this.isActive) {
         const pcm16 = float32ToPCM16(event.data);
-        this.deps.realtimeConnection.sendAudio(pcm16);
+        // Resample to 24kHz for OpenAI (if captured at 48kHz)
+        const pcm16_24k = event.sampleRate === 48000 ? resample48to24(pcm16) : pcm16;
+        this.deps.realtimeConnection.sendAudio(pcm16_24k);
       }
     });
 
@@ -245,7 +276,15 @@ export class SessionManager {
     // Subscribe to realtime events
     this._unsubscribers.push(
       this.deps.realtimeConnection.onEvent((event) => {
-        handleRealtimeEvent(event, this._state);
+        handleRealtimeEvent(event, this._state, (segment) => {
+          // Publish SegmentReceived event for Redux/UI
+          this.deps.eventBus.publish({
+            eventType: 'SegmentReceived',
+            occurredAt: new Date(),
+            aggregateId: session.id.toString(),
+            payload: segment,
+          } as DomainEvent);
+        });
       }),
     );
 
@@ -494,6 +533,12 @@ export class SessionManager {
     session: Session,
   ): void {
     if (event.type === 'transcript') {
+      // FILTER: Only process user transcripts for segments
+      // Skip assistant responses - they should NOT appear in Live Transcript
+      if (event.role === 'assistant') {
+        return;
+      }
+
       if (event.isFinal) {
         // Create transcript segment with speaker info
         const segment = TranscriptSegment.create(
