@@ -84,3 +84,39 @@ export const selectCanUseConversation = createSelector(
   selectHasOpenaiKey,
   (hasKey) => hasKey,
 );
+
+// Reactivity Config selectors
+export const selectReactivity = createSelector(
+  selectSettings,
+  (settings) => settings.reactivity,
+);
+
+export const selectVadThreshold = createSelector(
+  selectReactivity,
+  (reactivity) => reactivity.vadThreshold,
+);
+
+export const selectVadSilenceDuration = createSelector(
+  selectReactivity,
+  (reactivity) => reactivity.vadSilenceDurationMs,
+);
+
+export const selectSuggestionInterval = createSelector(
+  selectReactivity,
+  (reactivity) => reactivity.suggestionIntervalMs,
+);
+
+export const selectMaxActiveSuggestions = createSelector(
+  selectReactivity,
+  (reactivity) => reactivity.maxActiveSuggestions,
+);
+
+export const selectSuggestionModel = createSelector(
+  selectReactivity,
+  (reactivity) => reactivity.suggestionModel,
+);
+
+export const selectTranscriptionModel = createSelector(
+  selectReactivity,
+  (reactivity) => reactivity.transcriptionModel,
+);

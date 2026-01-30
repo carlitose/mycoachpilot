@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 
 import type { SessionHistoryEntry } from '@application/ports';
 
-import { useContainer } from '@infrastructure/di';
+import { useContainer } from '../context';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useSessionHistory() {

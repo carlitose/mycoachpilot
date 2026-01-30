@@ -1,5 +1,5 @@
-import type { SessionModeType } from '@domain/session';
 import { AggregateRoot } from '@domain/shared';
+import type { SessionModeType } from '@domain/shared';
 
 import { ApiKey, ApiKeyProps, ApiKeyService } from '../valueObjects/ApiKey';
 import { CoachingStyle, CoachingStyleType } from '../valueObjects/CoachingStyle';

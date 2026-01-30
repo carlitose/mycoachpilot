@@ -1,12 +1,13 @@
 import type { ConfigRepositoryPort } from '../../application/ports/ConfigRepositoryPort';
-import type { UserConfigProps, TemplateProps } from '../../domain/settings/entities';
-import { PREDEFINED_TEMPLATES } from '../../domain/settings/entities/Template';
+import type { UserConfigProps, TemplateProps, ReactivityConfigProps } from '../../domain/settings';
+import { PREDEFINED_TEMPLATES } from '../../domain/settings';
 import { ok } from '../../domain/shared/Result';
 import type { Result } from '../../domain/shared/Result';
 
 export class InMemoryConfigRepository implements ConfigRepositoryPort {
   private config: UserConfigProps | null = null;
   private templates = new Map<string, TemplateProps>();
+  private reactivityConfig: ReactivityConfigProps | null = null;
 
   constructor() {
     for (const t of PREDEFINED_TEMPLATES) {
@@ -44,9 +45,19 @@ export class InMemoryConfigRepository implements ConfigRepositoryPort {
   resetToDefaults(): Promise<Result<void, Error>> {
     this.config = null;
     this.templates.clear();
+    this.reactivityConfig = null;
     for (const t of PREDEFINED_TEMPLATES) {
       this.templates.set(t.id, t);
     }
+    return Promise.resolve(ok(undefined));
+  }
+
+  getReactivityConfig(): Promise<Result<ReactivityConfigProps | null, Error>> {
+    return Promise.resolve(ok(this.reactivityConfig));
+  }
+
+  saveReactivityConfig(config: ReactivityConfigProps): Promise<Result<void, Error>> {
+    this.reactivityConfig = config;
     return Promise.resolve(ok(undefined));
   }
 }

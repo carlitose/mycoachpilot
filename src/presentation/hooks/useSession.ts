@@ -1,32 +1,9 @@
 import { useCallback } from 'react';
 
 import type { SessionModeType, AudioConfigProps } from '@domain/session';
+import { REACTIVITY_DEFAULTS } from '@domain/settings';
 
-import { useContainer } from '@infrastructure/di';
-import {
-  selectCurrentSession,
-  selectConnectionState,
-  selectSessionError,
-  selectAudioLevel,
-  selectIsMuted,
-  selectIsSessionActive,
-  selectIsSessionPaused,
-  selectSessionMode,
-  selectIsConnected,
-  selectIsConnecting,
-  setSession,
-  setConnectionState,
-  setSessionError,
-  setAudioLevel,
-  setMuted,
-  resetSession,
-  clearTranscript,
-  clearSuggestions,
-} from '@infrastructure/state';
-
-import { useAppDispatch } from './useAppDispatch';
-import { useAppSelector } from './useAppSelector';
-
+import { useContainer } from '../context';
 
 export interface UseSessionOptions {
   mode: SessionModeType;
@@ -37,58 +14,56 @@ export interface UseSessionOptions {
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useSession() {
-  const dispatch = useAppDispatch();
-  const { sessionManager, configRepository } = useContainer();
+  const { sessionManager, configRepository, useSessionState, useTranscriptState, useCoachingState } = useContainer();
 
-  const currentSession = useAppSelector(selectCurrentSession);
-  const connectionState = useAppSelector(selectConnectionState);
-  const error = useAppSelector(selectSessionError);
-  const audioLevel = useAppSelector(selectAudioLevel);
-  const isMuted = useAppSelector(selectIsMuted);
-  const isActive = useAppSelector(selectIsSessionActive);
-  const isPaused = useAppSelector(selectIsSessionPaused);
-  const mode = useAppSelector(selectSessionMode);
-  const isConnected = useAppSelector(selectIsConnected);
-  const isConnecting = useAppSelector(selectIsConnecting);
+  // Get reactive state from ports
+  const sessionState = useSessionState();
+  const transcriptState = useTranscriptState();
+  const coachingState = useCoachingState();
 
   const startSession = useCallback(async (options: UseSessionOptions) => {
     // Clear previous session state
-    dispatch(resetSession());
-    dispatch(clearTranscript());
-    dispatch(clearSuggestions());
+    sessionState.resetSession();
+    transcriptState.clearTranscript();
+    coachingState.clearSuggestions();
 
-    // Get API keys from config
+    // Get API keys and config
     const configResult = await configRepository.getConfig();
     const config = configResult.isOk() ? configResult.unwrap() : null;
 
-    dispatch(setConnectionState('connecting'));
+    // Get reactivity config
+    const reactivityResult = await configRepository.getReactivityConfig();
+    const reactivity = reactivityResult.isOk() ? reactivityResult.unwrap() : null;
+
+    sessionState.setConnectionState('connecting');
 
     const result = await sessionManager.startSession(options.mode, {
       ...(options.templateId !== undefined ? { templateId: options.templateId } : {}),
       ...(options.audioConfig !== undefined ? { audioConfig: options.audioConfig } : {}),
       ...(config?.openaiApiKey ? { openaiApiKey: config.openaiApiKey } : {}),
       ...(options.systemPrompt !== undefined ? { systemPrompt: options.systemPrompt } : {}),
+      reactivity: reactivity ?? { ...REACTIVITY_DEFAULTS },
     });
 
     if (result.isOk()) {
       const session = result.unwrap();
-      dispatch(setSession(session.toProps()));
-      dispatch(setConnectionState('connected'));
+      sessionState.setSession(session.toProps());
+      sessionState.setConnectionState('connected');
       return { success: true, session };
     } else {
-      dispatch(setConnectionState('error'));
-      dispatch(setSessionError({ code: 'start_failed', message: result.unwrapErr().message }));
+      sessionState.setConnectionState('error');
+      sessionState.setError({ code: 'start_failed', message: result.unwrapErr().message });
       return { success: false, error: result.unwrapErr().message };
     }
-  }, [dispatch, sessionManager, configRepository]);
+  }, [sessionManager, configRepository, sessionState, transcriptState, coachingState]);
 
   const stopSession = useCallback(() => {
     const result = sessionManager.stopSession();
     if (result.isOk()) {
-      dispatch(setConnectionState('disconnected'));
+      sessionState.setConnectionState('disconnected');
     }
     return result.isOk();
-  }, [dispatch, sessionManager]);
+  }, [sessionManager, sessionState]);
 
   const pauseSession = useCallback(() => {
     const result = sessionManager.pauseSession();
@@ -106,26 +81,26 @@ export function useSession() {
   }, [sessionManager]);
 
   const setMutedState = useCallback((muted: boolean) => {
-    dispatch(setMuted(muted));
+    sessionState.setMuted(muted);
     // TODO: Actually mute the audio capture
-  }, [dispatch]);
+  }, [sessionState]);
 
   const updateAudioLevel = useCallback((level: number) => {
-    dispatch(setAudioLevel(level));
-  }, [dispatch]);
+    sessionState.setAudioLevel(level);
+  }, [sessionState]);
 
   return {
-    // State
-    currentSession,
-    connectionState,
-    error,
-    audioLevel,
-    isMuted,
-    isActive,
-    isPaused,
-    mode,
-    isConnected,
-    isConnecting,
+    // State (reactive values from port)
+    currentSession: sessionState.currentSession,
+    connectionState: sessionState.connectionState,
+    error: sessionState.error,
+    audioLevel: sessionState.audioLevel,
+    isMuted: sessionState.isMuted,
+    isActive: sessionState.isActive,
+    isPaused: sessionState.isPaused,
+    mode: sessionState.mode,
+    isConnected: sessionState.isConnected,
+    isConnecting: sessionState.isConnecting,
 
     // Actions
     startSession,

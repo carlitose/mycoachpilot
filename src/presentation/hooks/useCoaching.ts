@@ -2,19 +2,7 @@ import { useCallback } from 'react';
 
 import type { SuggestionProps } from '@domain/coaching';
 
-import {
-  selectSuggestions,
-  selectIsGenerating,
-  selectActiveSuggestions,
-  selectLatestSuggestion,
-  selectActiveSuggestionCount,
-  markSuggestionUsed,
-  dismissSuggestion,
-  clearSuggestions,
-} from '@infrastructure/state';
-
-import { useAppDispatch } from './useAppDispatch';
-import { useAppSelector } from './useAppSelector';
+import { useContainer } from '../context';
 
 interface UseCoachingResult {
   suggestions: SuggestionProps[];
@@ -28,33 +16,30 @@ interface UseCoachingResult {
 }
 
 export function useCoaching(): UseCoachingResult {
-  const dispatch = useAppDispatch();
+  const { useCoachingState } = useContainer();
 
-  const suggestions = useAppSelector(selectSuggestions);
-  const isGenerating = useAppSelector(selectIsGenerating);
-  const activeSuggestions = useAppSelector(selectActiveSuggestions);
-  const latestSuggestion = useAppSelector(selectLatestSuggestion);
-  const activeSuggestionCount = useAppSelector(selectActiveSuggestionCount);
+  // Get reactive state from port
+  const coachingState = useCoachingState();
 
   const markSuggestionUsedAction = useCallback((suggestionId: string) => {
-    dispatch(markSuggestionUsed(suggestionId));
-  }, [dispatch]);
+    coachingState.markSuggestionUsed(suggestionId);
+  }, [coachingState]);
 
   const dismissSuggestionAction = useCallback((suggestionId: string) => {
-    dispatch(dismissSuggestion(suggestionId));
-  }, [dispatch]);
+    coachingState.dismissSuggestion(suggestionId);
+  }, [coachingState]);
 
   const clear = useCallback(() => {
-    dispatch(clearSuggestions());
-  }, [dispatch]);
+    coachingState.clearSuggestions();
+  }, [coachingState]);
 
   return {
-    // State
-    suggestions,
-    isGenerating,
-    activeSuggestions,
-    latestSuggestion,
-    activeSuggestionCount,
+    // State (reactive values from port)
+    suggestions: coachingState.suggestions,
+    isGenerating: coachingState.isGenerating,
+    activeSuggestions: coachingState.activeSuggestions,
+    latestSuggestion: coachingState.latestSuggestion,
+    activeSuggestionCount: coachingState.activeSuggestionCount,
 
     // Actions
     markSuggestionUsed: markSuggestionUsedAction,

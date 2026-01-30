@@ -1,4 +1,4 @@
-import type { UserConfigProps, TemplateProps } from '@domain/settings';
+import type { UserConfigProps, TemplateProps, ReactivityConfigProps } from '@domain/settings';
 import type { Result } from '@domain/shared';
 
 /**
@@ -40,4 +40,14 @@ export interface ConfigRepositoryPort {
    * Reset configuration to defaults
    */
   resetToDefaults(): Promise<Result<void, Error>>;
+
+  /**
+   * Get reactivity configuration
+   */
+  getReactivityConfig(): Promise<Result<ReactivityConfigProps | null, Error>>;
+
+  /**
+   * Save reactivity configuration
+   */
+  saveReactivityConfig(config: ReactivityConfigProps): Promise<Result<void, Error>>;
 }

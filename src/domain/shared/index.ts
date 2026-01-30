@@ -14,3 +14,6 @@ export {
   ConnectionError,
   ValidationError,
 } from './DomainError';
+
+// Shared types across bounded contexts
+export type { SessionModeType } from './types';

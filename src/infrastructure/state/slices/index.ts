@@ -63,6 +63,14 @@ export {
   setLoading as setSettingsLoading,
   setSaving as setSettingsSaving,
   setError as setSettingsError,
+  setReactivity,
+  setVadThreshold,
+  setVadSilenceDuration,
+  setSuggestionInterval,
+  setMaxActiveSuggestions,
+  setSuggestionModel,
+  setTranscriptionModel,
+  resetReactivity,
   resetSettings,
 } from './settingsSlice';
 export type { SettingsSliceState } from './settingsSlice';

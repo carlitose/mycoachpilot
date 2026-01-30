@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { PREDEFINED_TEMPLATES } from '@domain/settings';
+import { PREDEFINED_TEMPLATES, REACTIVITY_DEFAULTS } from '@domain/settings';
 
 import reducer, {
   setConfig,
@@ -34,6 +34,7 @@ describe('settingsSlice', () => {
 
   const initialState: SettingsSliceState = {
     config: defaultConfig,
+    reactivity: { ...REACTIVITY_DEFAULTS },
     templates: PREDEFINED_TEMPLATES,
     isLoading: false,
     isSaving: false,
@@ -293,6 +294,7 @@ describe('settingsSlice', () => {
           openaiApiKey: 'sk-test',
           defaultMode: 'meeting_coach',
         },
+        reactivity: { ...REACTIVITY_DEFAULTS },
         templates: [mockTemplate],
         isLoading: true,
         isSaving: true,

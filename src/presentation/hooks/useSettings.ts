@@ -1,54 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import type { SessionModeType } from '@domain/session';
-import type { CoachingStyleType } from '@domain/settings';
+import type { CoachingStyleType, ReactivityConfigProps } from '@domain/settings';
+import type { SessionModeType } from '@domain/shared';
 
-import { useContainer } from '@infrastructure/di';
-import {
-  selectConfig,
-  selectTemplates,
-  selectIsLoading,
-  selectIsSaving,
-  selectSettingsError,
-  selectHasOpenaiKey,
-  selectDefaultMode,
-  selectDefaultTemplateId,
-  selectCoachingStyle,
-  selectTheme,
-  selectCanUseMeetingCoach,
-  selectCanUseConversation,
-  setConfig,
-  setOpenaiApiKey,
-  setDefaultMode,
-  setDefaultTemplate,
-  setCoachingStyle,
-  setTheme,
-  setTemplates,
-  setSettingsLoading,
-  setSettingsError,
-} from '@infrastructure/state';
-
-import { useAppDispatch } from './useAppDispatch';
-import { useAppSelector } from './useAppSelector';
+import { useContainer } from '../context';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useSettings() {
-  const dispatch = useAppDispatch();
-  const { configRepository } = useContainer();
+  const { configRepository, useSettingsState } = useContainer();
   const [initialized, setInitialized] = useState(false);
 
-  const config = useAppSelector(selectConfig);
-  const templates = useAppSelector(selectTemplates);
-  const isLoading = useAppSelector(selectIsLoading);
-  const isSaving = useAppSelector(selectIsSaving);
-  const error = useAppSelector(selectSettingsError);
-  const hasOpenaiKey = useAppSelector(selectHasOpenaiKey);
-  const defaultMode = useAppSelector(selectDefaultMode);
-  const defaultTemplate = useAppSelector(selectDefaultTemplateId);
-  const coachingStyle = useAppSelector(selectCoachingStyle);
-  const theme = useAppSelector(selectTheme);
-  const canUseMeetingCoach = useAppSelector(selectCanUseMeetingCoach);
-  const canUseConversation = useAppSelector(selectCanUseConversation);
+  // Get reactive state from port
+  const settingsState = useSettingsState();
 
   // Load settings on mount
   useEffect(() => {
@@ -60,67 +23,128 @@ export function useSettings() {
   }, [initialized]);
 
   const loadSettings = useCallback(async () => {
-    dispatch(setSettingsLoading(true));
+    settingsState.setLoading(true);
 
     const configResult = await configRepository.getConfig();
     if (configResult.isOk()) {
       const loadedConfig = configResult.unwrap();
       if (loadedConfig !== null) {
-        dispatch(setConfig(loadedConfig));
+        settingsState.setConfig(loadedConfig);
       }
     }
 
     const templatesResult = await configRepository.getTemplates();
     if (templatesResult.isOk()) {
-      dispatch(setTemplates(templatesResult.unwrap()));
+      settingsState.setTemplates(templatesResult.unwrap());
     }
 
-    dispatch(setSettingsLoading(false));
-  }, [dispatch, configRepository]);
+    // Load reactivity config
+    const reactivityResult = await configRepository.getReactivityConfig();
+    if (reactivityResult.isOk()) {
+      const loadedReactivity = reactivityResult.unwrap();
+      if (loadedReactivity !== null) {
+        settingsState.setReactivity(loadedReactivity);
+      }
+    }
+
+    settingsState.setLoading(false);
+  }, [configRepository, settingsState]);
 
   const saveOpenaiKey = useCallback(async (key: string | null) => {
-    dispatch(setOpenaiApiKey(key));
-    await configRepository.saveConfig({ ...config, openaiApiKey: key });
-  }, [dispatch, config, configRepository]);
+    settingsState.setOpenaiApiKey(key);
+    await configRepository.saveConfig({ ...settingsState.config, openaiApiKey: key });
+  }, [settingsState, configRepository]);
 
   const saveDefaultMode = useCallback(async (mode: SessionModeType) => {
-    dispatch(setDefaultMode(mode));
-    await configRepository.saveConfig({ ...config, defaultMode: mode });
-  }, [dispatch, config, configRepository]);
+    settingsState.setDefaultMode(mode);
+    await configRepository.saveConfig({ ...settingsState.config, defaultMode: mode });
+  }, [settingsState, configRepository]);
 
   const saveDefaultTemplate = useCallback(async (templateId: string) => {
-    dispatch(setDefaultTemplate(templateId));
-    await configRepository.saveConfig({ ...config, defaultTemplateId: templateId });
-  }, [dispatch, config, configRepository]);
+    settingsState.setDefaultTemplate(templateId);
+    await configRepository.saveConfig({ ...settingsState.config, defaultTemplateId: templateId });
+  }, [settingsState, configRepository]);
 
   const saveCoachingStyle = useCallback(async (style: CoachingStyleType) => {
-    dispatch(setCoachingStyle(style));
-    await configRepository.saveConfig({ ...config, coachingStyle: style });
-  }, [dispatch, config, configRepository]);
+    settingsState.setCoachingStyle(style);
+    await configRepository.saveConfig({ ...settingsState.config, coachingStyle: style });
+  }, [settingsState, configRepository]);
 
   const saveTheme = useCallback(async (newTheme: 'light' | 'dark' | 'system') => {
-    dispatch(setTheme(newTheme));
-    await configRepository.saveConfig({ ...config, theme: newTheme });
-  }, [dispatch, config, configRepository]);
+    settingsState.setTheme(newTheme);
+    await configRepository.saveConfig({ ...settingsState.config, theme: newTheme });
+  }, [settingsState, configRepository]);
 
   const clearError = useCallback(() => {
-    dispatch(setSettingsError(null));
-  }, [dispatch]);
+    settingsState.setError(null);
+  }, [settingsState]);
+
+  // Reactivity config save functions
+  const saveVadThreshold = useCallback(async (value: number) => {
+    settingsState.setVadThreshold(value);
+    await configRepository.saveReactivityConfig({ ...settingsState.reactivity, vadThreshold: value });
+  }, [settingsState, configRepository]);
+
+  const saveVadSilenceDuration = useCallback(async (value: number) => {
+    settingsState.setVadSilenceDuration(value);
+    await configRepository.saveReactivityConfig({ ...settingsState.reactivity, vadSilenceDurationMs: value });
+  }, [settingsState, configRepository]);
+
+  const saveSuggestionInterval = useCallback(async (value: number) => {
+    settingsState.setSuggestionInterval(value);
+    await configRepository.saveReactivityConfig({ ...settingsState.reactivity, suggestionIntervalMs: value });
+  }, [settingsState, configRepository]);
+
+  const saveMaxActiveSuggestions = useCallback(async (value: number) => {
+    settingsState.setMaxActiveSuggestions(value);
+    await configRepository.saveReactivityConfig({ ...settingsState.reactivity, maxActiveSuggestions: value });
+  }, [settingsState, configRepository]);
+
+  const saveSuggestionModel = useCallback(async (value: string) => {
+    settingsState.setSuggestionModel(value);
+    await configRepository.saveReactivityConfig({ ...settingsState.reactivity, suggestionModel: value });
+  }, [settingsState, configRepository]);
+
+  const saveTranscriptionModel = useCallback(async (value: string) => {
+    settingsState.setTranscriptionModel(value);
+    await configRepository.saveReactivityConfig({ ...settingsState.reactivity, transcriptionModel: value });
+  }, [settingsState, configRepository]);
+
+  const resetReactivityToDefaults = useCallback(async () => {
+    settingsState.resetReactivity();
+    // After reset, reactivity will have defaults - we need to save them
+    const { REACTIVITY_DEFAULTS } = await import('@domain/settings');
+    await configRepository.saveReactivityConfig({ ...REACTIVITY_DEFAULTS });
+  }, [settingsState, configRepository]);
+
+  const saveReactivityConfig = useCallback(async (config: ReactivityConfigProps) => {
+    settingsState.setReactivity(config);
+    await configRepository.saveReactivityConfig(config);
+  }, [settingsState, configRepository]);
 
   return {
-    // State
-    config,
-    templates,
-    isLoading,
-    isSaving,
-    error,
-    hasOpenaiKey,
-    defaultMode,
-    defaultTemplate,
-    coachingStyle,
-    theme,
-    canUseMeetingCoach,
-    canUseConversation,
+    // State (reactive values from port)
+    config: settingsState.config,
+    templates: settingsState.templates,
+    isLoading: settingsState.isLoading,
+    isSaving: settingsState.isSaving,
+    error: settingsState.error,
+    hasOpenaiKey: settingsState.hasOpenaiKey,
+    defaultMode: settingsState.defaultMode,
+    defaultTemplate: settingsState.defaultTemplateId,
+    coachingStyle: settingsState.coachingStyle,
+    theme: settingsState.theme,
+    canUseMeetingCoach: settingsState.canUseMeetingCoach,
+    canUseConversation: settingsState.canUseConversation,
+
+    // Reactivity state
+    reactivity: settingsState.reactivity,
+    vadThreshold: settingsState.vadThreshold,
+    vadSilenceDuration: settingsState.vadSilenceDuration,
+    suggestionInterval: settingsState.suggestionInterval,
+    maxActiveSuggestions: settingsState.maxActiveSuggestions,
+    suggestionModel: settingsState.suggestionModel,
+    transcriptionModel: settingsState.transcriptionModel,
 
     // Actions
     loadSettings,
@@ -130,5 +154,15 @@ export function useSettings() {
     saveCoachingStyle,
     saveTheme,
     clearError,
+
+    // Reactivity actions
+    saveVadThreshold,
+    saveVadSilenceDuration,
+    saveSuggestionInterval,
+    saveMaxActiveSuggestions,
+    saveSuggestionModel,
+    saveTranscriptionModel,
+    resetReactivityToDefaults,
+    saveReactivityConfig,
   };
 }

@@ -1,11 +1,12 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import type { SessionModeType } from '@domain/session';
-import type { UserConfigProps, TemplateProps, CoachingStyleType } from '@domain/settings';
-import { PREDEFINED_TEMPLATES } from '@domain/settings';
+import type { UserConfigProps, TemplateProps, CoachingStyleType, ReactivityConfigProps } from '@domain/settings';
+import { PREDEFINED_TEMPLATES, REACTIVITY_DEFAULTS } from '@domain/settings';
 
 export interface SettingsSliceState {
   config: UserConfigProps;
+  reactivity: ReactivityConfigProps;
   templates: TemplateProps[];
   isLoading: boolean;
   isSaving: boolean;
@@ -24,6 +25,7 @@ const defaultConfig: UserConfigProps = {
 
 const initialState: SettingsSliceState = {
   config: defaultConfig,
+  reactivity: { ...REACTIVITY_DEFAULTS },
   templates: PREDEFINED_TEMPLATES,
   isLoading: false,
   isSaving: false,
@@ -94,6 +96,39 @@ export const settingsSlice = createSlice({
       state.error = action.payload;
     },
 
+    // Reactivity Config reducers
+    setReactivity: (state, action: PayloadAction<ReactivityConfigProps>) => {
+      state.reactivity = action.payload;
+    },
+
+    setVadThreshold: (state, action: PayloadAction<number>) => {
+      state.reactivity.vadThreshold = Math.max(0.1, Math.min(1.0, action.payload));
+    },
+
+    setVadSilenceDuration: (state, action: PayloadAction<number>) => {
+      state.reactivity.vadSilenceDurationMs = Math.max(100, Math.min(1000, action.payload));
+    },
+
+    setSuggestionInterval: (state, action: PayloadAction<number>) => {
+      state.reactivity.suggestionIntervalMs = Math.max(3000, Math.min(30000, action.payload));
+    },
+
+    setMaxActiveSuggestions: (state, action: PayloadAction<number>) => {
+      state.reactivity.maxActiveSuggestions = Math.max(1, Math.min(10, action.payload));
+    },
+
+    setSuggestionModel: (state, action: PayloadAction<string>) => {
+      state.reactivity.suggestionModel = action.payload;
+    },
+
+    setTranscriptionModel: (state, action: PayloadAction<string>) => {
+      state.reactivity.transcriptionModel = action.payload;
+    },
+
+    resetReactivity: (state) => {
+      state.reactivity = { ...REACTIVITY_DEFAULTS };
+    },
+
     resetSettings: () => initialState,
   },
 });
@@ -113,6 +148,14 @@ export const {
   setLoading,
   setSaving,
   setError,
+  setReactivity,
+  setVadThreshold,
+  setVadSilenceDuration,
+  setSuggestionInterval,
+  setMaxActiveSuggestions,
+  setSuggestionModel,
+  setTranscriptionModel,
+  resetReactivity,
   resetSettings,
 } = settingsSlice.actions;
 

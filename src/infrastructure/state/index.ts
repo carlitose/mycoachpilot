@@ -13,5 +13,13 @@ export * from './slices';
 // Selectors
 export * from './selectors';
 
+// State Adapters (implement application ports)
+export {
+  useReduxSessionState,
+  useReduxTranscriptState,
+  useReduxCoachingState,
+  useReduxSettingsState,
+} from './adapters';
+
 // Event Bus Adapter
 export { ReduxEventBusAdapter } from './ReduxEventBusAdapter';

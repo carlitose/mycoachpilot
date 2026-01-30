@@ -4,7 +4,7 @@
  */
 
 // Realtime (OpenAI)
-export { OpenAIRealtimeAdapter } from './realtime';
+export { OpenAIRealtimeAdapter, BrowserRealtimeConnectionFactory } from './realtime';
 
 // Audio Capture
 export { AudioCaptureAdapter } from './audio';

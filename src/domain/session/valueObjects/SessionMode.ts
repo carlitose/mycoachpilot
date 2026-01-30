@@ -1,6 +1,8 @@
 import { ValueObject } from '@domain/shared';
+import type { SessionModeType } from '@domain/shared';
 
-export type SessionModeType = 'conversation' | 'transcript_only' | 'meeting_coach';
+// Re-export from shared for backwards compatibility
+export type { SessionModeType } from '@domain/shared';
 
 const VALID_MODES: SessionModeType[] = ['conversation', 'transcript_only', 'meeting_coach'];
 

@@ -1,61 +1,35 @@
 import { useCallback } from 'react';
 
-import { useContainer } from '@infrastructure/di';
-import {
-  selectMessages,
-  selectSegments,
-  selectSpeakers,
-  selectInterimTranscript,
-  selectUserSpeakerId,
-  selectUserSpeaker,
-  selectOtherSpeakers,
-  selectRecentMessages,
-  selectRecentSegments,
-  selectSpeakerStats,
-  setUserSpeaker,
-  clearTranscript,
-} from '@infrastructure/state';
-
-import { useAppDispatch } from './useAppDispatch';
-import { useAppSelector } from './useAppSelector';
+import { useContainer } from '../context';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useTranscript() {
-  const dispatch = useAppDispatch();
-  const { sessionManager } = useContainer();
+  const { sessionManager, useTranscriptState } = useContainer();
 
-  const messages = useAppSelector(selectMessages);
-  const segments = useAppSelector(selectSegments);
-  const speakers = useAppSelector(selectSpeakers);
-  const interimTranscript = useAppSelector(selectInterimTranscript);
-  const userSpeakerId = useAppSelector(selectUserSpeakerId);
-  const userSpeaker = useAppSelector(selectUserSpeaker);
-  const otherSpeakers = useAppSelector(selectOtherSpeakers);
-  const recentMessages = useAppSelector(selectRecentMessages);
-  const recentSegments = useAppSelector(selectRecentSegments);
-  const speakerStats = useAppSelector(selectSpeakerStats);
+  // Get reactive state from port
+  const transcriptState = useTranscriptState();
 
   const identifyUserSpeaker = useCallback((speakerId: number) => {
-    dispatch(setUserSpeaker(speakerId));
+    transcriptState.setUserSpeaker(speakerId);
     sessionManager.identifySpeakerAsUser(speakerId);
-  }, [dispatch, sessionManager]);
+  }, [transcriptState, sessionManager]);
 
   const clear = useCallback(() => {
-    dispatch(clearTranscript());
-  }, [dispatch]);
+    transcriptState.clearTranscript();
+  }, [transcriptState]);
 
   return {
-    // State
-    messages,
-    segments,
-    speakers,
-    interimTranscript,
-    userSpeakerId,
-    userSpeaker,
-    otherSpeakers,
-    recentMessages,
-    recentSegments,
-    speakerStats,
+    // State (reactive values from port)
+    messages: transcriptState.messages,
+    segments: transcriptState.segments,
+    speakers: transcriptState.speakers,
+    interimTranscript: transcriptState.interimTranscript,
+    userSpeakerId: transcriptState.userSpeakerId,
+    userSpeaker: transcriptState.userSpeaker,
+    otherSpeakers: transcriptState.otherSpeakers,
+    recentMessages: transcriptState.recentMessages,
+    recentSegments: transcriptState.recentSegments,
+    speakerStats: transcriptState.speakerStats,
 
     // Actions
     identifyUserSpeaker,

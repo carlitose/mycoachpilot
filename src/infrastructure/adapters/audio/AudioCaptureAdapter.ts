@@ -20,6 +20,7 @@ export class AudioCaptureAdapter implements AudioCapturePort {
   private micStream: MediaStream | null = null;
   private tabStream: MediaStream | null = null;
   private processor: AudioWorkletNode | ScriptProcessorNode | null = null;
+  private _tabProcessor: ScriptProcessorNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private mixedSource: GainNode | null = null;
   private eventHandlers: Set<AudioEventHandler> = new Set();
@@ -180,6 +181,11 @@ export class AudioCaptureAdapter implements AudioCapturePort {
       this.processor = null;
     }
 
+    if (this._tabProcessor) {
+      this._tabProcessor.disconnect();
+      this._tabProcessor = null;
+    }
+
     if (this.source) {
       this.source.disconnect();
       this.source = null;
@@ -263,62 +269,69 @@ export class AudioCaptureAdapter implements AudioCapturePort {
     this.processor.connect(this.audioContext.destination);
   }
 
+  /**
+   * Setup mixed audio processing with SEPARATE channels for mic and tab.
+   * Each channel emits its own audio events with channel identifier.
+   */
   private setupMixedAudioProcessing(sampleRate: number): void {
     if (!this.micStream || !this.tabStream) return;
 
     this.audioContext = new AudioContext({ sampleRate });
-
-    // Create sources for both streams
-    const micSource = this.audioContext.createMediaStreamSource(this.micStream);
-    const tabSource = this.audioContext.createMediaStreamSource(this.tabStream);
-
-    // Create gain nodes for mixing
-    const micGain = this.audioContext.createGain();
-    const tabGain = this.audioContext.createGain();
-    this.mixedSource = this.audioContext.createGain();
-
-    micGain.gain.value = 1.0;
-    tabGain.gain.value = 0.8; // Slightly reduce tab volume
-
-    micSource.connect(micGain);
-    tabSource.connect(tabGain);
-    micGain.connect(this.mixedSource);
-    tabGain.connect(this.mixedSource);
-
-    // Process mixed audio
     const bufferSize = 4096;
-    this.processor = this.audioContext.createScriptProcessor(bufferSize, 1, 1);
 
-    this.processor.onaudioprocess = (event) => {
+    // Mic processor - emits with channel: 'microphone'
+    const micSource = this.audioContext.createMediaStreamSource(this.micStream);
+    const micProcessor = this.audioContext.createScriptProcessor(bufferSize, 1, 1);
+    micProcessor.onaudioprocess = (event) => {
       if (this.isPaused) return;
-
       const inputData = event.inputBuffer.getChannelData(0);
-
-      // Calculate audio level
-      let sum = 0;
-      for (let i = 0; i < inputData.length; i++) {
-        sum += (inputData[i] ?? 0) * (inputData[i] ?? 0);
-      }
-      const level = Math.sqrt(sum / inputData.length);
-
-      // Emit level event
-      this.emitEvent({
-        type: 'level',
-        level: Math.min(1, level * 3),
-        timestamp: Date.now(),
-      });
-
-      // Emit audio data
+      this.emitLevelEvent(inputData);
       this.emitEvent({
         type: 'audio',
         data: new Float32Array(inputData),
         sampleRate: this.audioContext?.sampleRate ?? sampleRate,
         timestamp: Date.now(),
+        channel: 'microphone',
       });
     };
+    micSource.connect(micProcessor);
+    micProcessor.connect(this.audioContext.destination);
 
-    this.mixedSource.connect(this.processor);
-    this.processor.connect(this.audioContext.destination);
+    // Tab processor - emits with channel: 'system'
+    const tabSource = this.audioContext.createMediaStreamSource(this.tabStream);
+    const tabProcessor = this.audioContext.createScriptProcessor(bufferSize, 1, 1);
+    tabProcessor.onaudioprocess = (event) => {
+      if (this.isPaused) return;
+      const inputData = event.inputBuffer.getChannelData(0);
+      this.emitEvent({
+        type: 'audio',
+        data: new Float32Array(inputData),
+        sampleRate: this.audioContext?.sampleRate ?? sampleRate,
+        timestamp: Date.now(),
+        channel: 'system',
+      });
+    };
+    tabSource.connect(tabProcessor);
+    tabProcessor.connect(this.audioContext.destination);
+
+    this.processor = micProcessor;
+    this._tabProcessor = tabProcessor;
+  }
+
+  /**
+   * Calculate and emit audio level from input data
+   */
+  private emitLevelEvent(inputData: Float32Array): void {
+    let sum = 0;
+    for (let i = 0; i < inputData.length; i++) {
+      sum += (inputData[i] ?? 0) * (inputData[i] ?? 0);
+    }
+    const level = Math.sqrt(sum / inputData.length);
+    this.emitEvent({
+      type: 'level',
+      level: Math.min(1, level * 3),
+      timestamp: Date.now(),
+    });
   }
 
   private emitEvent(event: AudioEvent): void {

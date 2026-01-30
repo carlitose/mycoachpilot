@@ -51,5 +51,6 @@ export {
   SelectValue,
 } from './select';
 export { Separator } from './separator';
+export { Slider } from './slider';
 export { Switch } from './switch';
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';

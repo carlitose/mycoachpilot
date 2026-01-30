@@ -1,8 +1,9 @@
-import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, SessionRepositoryPort, ConfigRepositoryPort } from '@application/ports';
+import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, RealtimeConnectionFactoryPort, SessionRepositoryPort, ConfigRepositoryPort } from '@application/ports';
 import { SessionManager, CoachingEngine } from '@application/services';
 
 import {
   OpenAIRealtimeAdapter,
+  BrowserRealtimeConnectionFactory,
   AudioCaptureAdapter,
   LocalStorageSessionRepository,
   LocalStorageConfigRepository,
@@ -17,6 +18,7 @@ import { store, ReduxEventBusAdapter } from '@infrastructure/state';
 let eventBus: EventBusPort | null = null;
 let audioCapture: AudioCapturePort | null = null;
 let realtimeConnection: RealtimeConnectionPort | null = null;
+let realtimeConnectionFactory: RealtimeConnectionFactoryPort | null = null;
 let sessionRepository: SessionRepositoryPort | null = null;
 let configRepository: ConfigRepositoryPort | null = null;
 let sessionManager: SessionManager | null = null;
@@ -41,6 +43,13 @@ export function getRealtimeConnection(): RealtimeConnectionPort {
     realtimeConnection = new OpenAIRealtimeAdapter();
   }
   return realtimeConnection;
+}
+
+export function getRealtimeConnectionFactory(): RealtimeConnectionFactoryPort {
+  if (!realtimeConnectionFactory) {
+    realtimeConnectionFactory = new BrowserRealtimeConnectionFactory();
+  }
+  return realtimeConnectionFactory;
 }
 
 export function getSessionRepository(): SessionRepositoryPort {
@@ -75,6 +84,7 @@ export function getSessionManager(): SessionManager {
       eventBus: getEventBus(),
       audioCapture: getAudioCapture(),
       realtimeConnection: getRealtimeConnection(),
+      realtimeConnectionFactory: getRealtimeConnectionFactory(),
       coachingEngine: getCoachingEngine(),
     });
   }
@@ -86,6 +96,7 @@ export function resetContainer(): void {
   eventBus = null;
   audioCapture = null;
   realtimeConnection = null;
+  realtimeConnectionFactory = null;
   sessionRepository = null;
   configRepository = null;
   sessionManager = null;

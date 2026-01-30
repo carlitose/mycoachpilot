@@ -6,8 +6,7 @@ import { REACTIVITY_DEFAULTS } from '@domain/settings';
 import { Result, ok, err, SessionError, DomainEvent } from '@domain/shared';
 import { Message, TranscriptSegment, Speaker, MessageProps, TranscriptSegmentProps, SpeakerProps } from '@domain/transcript';
 
-import { NodeOpenAIRealtimeAdapter } from '../../cli/adapters/NodeOpenAIRealtimeAdapter';
-import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, RealtimeConfig, RealtimeEvent } from '../ports';
+import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, RealtimeConnectionFactoryPort, RealtimeConfig, RealtimeEvent } from '../ports';
 
 import type { CoachingEngine } from './CoachingEngine';
 import { createSuggestionGeneratorFn } from './CoachingIntegration';
@@ -17,6 +16,7 @@ export interface SessionManagerDependencies {
   eventBus: EventBusPort;
   audioCapture: AudioCapturePort;
   realtimeConnection: RealtimeConnectionPort;
+  realtimeConnectionFactory?: RealtimeConnectionFactoryPort;
   coachingEngine?: CoachingEngine;
 }
 
@@ -46,8 +46,8 @@ export class SessionManager {
 
   // Dual realtime connections for mixed audio mode (meeting_coach)
   // Each channel gets its own connection to prevent audio interleaving
-  private _micRealtime: NodeOpenAIRealtimeAdapter | null = null;
-  private _systemRealtime: NodeOpenAIRealtimeAdapter | null = null;
+  private _micRealtime: RealtimeConnectionPort | null = null;
+  private _systemRealtime: RealtimeConnectionPort | null = null;
 
   constructor(private readonly deps: SessionManagerDependencies) {}
 
@@ -356,9 +356,14 @@ export class SessionManager {
     apiKey: string,
     reactivity?: ReactivityConfigProps,
   ): Promise<Result<void, Error>> {
-    // Create TWO separate realtime connections
-    this._micRealtime = new NodeOpenAIRealtimeAdapter();
-    this._systemRealtime = new NodeOpenAIRealtimeAdapter();
+    // Factory is required for dual connections
+    if (!this.deps.realtimeConnectionFactory) {
+      return err(SessionError.invalidConfiguration('RealtimeConnectionFactory required for mixed audio mode'));
+    }
+
+    // Create TWO separate realtime connections using factory
+    this._micRealtime = this.deps.realtimeConnectionFactory.create();
+    this._systemRealtime = this.deps.realtimeConnectionFactory.create();
 
     // Route audio to appropriate connection based on channel
     // Microphone: captured at 48kHz via coreaudio-node, needs resampling
