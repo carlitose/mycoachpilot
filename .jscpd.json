@@ -1,16 +1,17 @@
 {
   "threshold": 2,
-  "reporters": ["html", "console"],
+  "minLines": 5,
+  "minTokens": 50,
+  "reporters": ["console", "html"],
+  "output": "./jscpd-report",
   "ignore": [
     "**/node_modules/**",
-    "**/.next/**",
-    "**/build/**",
     "**/dist/**",
-    "**/*.min.js",
-    "**/*.min.css",
-    "**/jscpd-report/**"
-  ],
-  "output": "./jscpd-report",
-  "minLines": 5,
-  "minTokens": 50
+    "**/jscpd-report/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*.d.ts"
+  ]
 }

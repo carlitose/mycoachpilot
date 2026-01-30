@@ -49,4 +49,7 @@ public/worker-*.js
 # PWA fallback files (generated)
 public/fallback-*.js
 public/fallback-*.js.map
-CLAUDE.md
+# Build output
+dist/
+dist-node/
+my-coach-pilot-coaching-app/
