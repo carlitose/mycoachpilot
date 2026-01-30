@@ -89,6 +89,10 @@ export function useSession() {
     sessionState.setAudioLevel(level);
   }, [sessionState]);
 
+  const clearError = useCallback(() => {
+    sessionState.setError(null);
+  }, [sessionState]);
+
   return {
     // State (reactive values from port)
     currentSession: sessionState.currentSession,
@@ -110,5 +114,6 @@ export function useSession() {
     sendTextMessage,
     setMuted: setMutedState,
     updateAudioLevel,
+    clearError,
   };
 }

@@ -75,15 +75,9 @@ export const selectCustomTemplates = createSelector(
   (templates) => templates.filter((t) => !t.isPredefined),
 );
 
-export const selectCanUseMeetingCoach = createSelector(
-  selectHasOpenaiKey,
-  (hasKey) => hasKey,
-);
-
-export const selectCanUseConversation = createSelector(
-  selectHasOpenaiKey,
-  (hasKey) => hasKey,
-);
+// Simply re-export the same selector - no createSelector wrapper needed for identity functions
+export const selectCanUseMeetingCoach = selectHasOpenaiKey;
+export const selectCanUseConversation = selectHasOpenaiKey;
 
 // Reactivity Config selectors
 export const selectReactivity = createSelector(

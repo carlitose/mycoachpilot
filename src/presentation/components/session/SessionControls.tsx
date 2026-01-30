@@ -36,6 +36,7 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
     stopSession,
     pauseSession,
     resumeSession,
+    clearError,
   } = useSession();
 
   const { hasOpenaiKey } = useSettings();
@@ -70,6 +71,9 @@ export function SessionControls({ onOpenSettings }: SessionControlsProps): React
   };
 
   const handleStart = (): void => {
+    // Clear any stale errors from previous session attempts
+    clearError();
+
     if (!hasOpenaiKey) {
       onOpenSettings();
       return;
