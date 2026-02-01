@@ -1,4 +1,4 @@
-import { Globe, Key, Mic2, Sparkles } from 'lucide-react';
+import { Globe, Key, Mic2, Sparkles, Volume2 } from 'lucide-react';
 
 import type { CoachingPromptConfigProps } from '@domain/settings';
 
@@ -55,6 +55,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
     coachingPromptConfig,
     saveCoachingPromptConfig,
     resetCoachingPromptsToDefaults,
+    // TTS Config
+    ttsEnabled,
+    saveTTSEnabled,
   } = useSettings();
 
   const handleOpenaiKeyChange = (value: string): void => {
@@ -144,6 +147,22 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
                 </div>
               </div>
               <Switch defaultChecked />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-border p-4">
+              <div className="flex items-center gap-3">
+                <Volume2 className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">AI Voice Responses</p>
+                  <p className="text-xs text-muted-foreground">
+                    Play AI responses out loud in conversation mode
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={ttsEnabled}
+                onCheckedChange={(checked) => { void saveTTSEnabled(checked); }}
+              />
             </div>
           </TabsContent>
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { PREDEFINED_TEMPLATES, REACTIVITY_DEFAULTS, COACHING_PROMPT_DEFAULTS } from '@domain/settings';
+import { PREDEFINED_TEMPLATES, REACTIVITY_DEFAULTS, COACHING_PROMPT_DEFAULTS, TTS_DEFAULTS } from '@domain/settings';
 
 import reducer, {
   setConfig,
@@ -36,6 +36,7 @@ describe('settingsSlice', () => {
     config: defaultConfig,
     reactivity: { ...REACTIVITY_DEFAULTS },
     coachingPromptConfig: { ...COACHING_PROMPT_DEFAULTS },
+    ttsConfig: { ...TTS_DEFAULTS },
     templates: PREDEFINED_TEMPLATES,
     isLoading: false,
     isSaving: false,
@@ -297,6 +298,7 @@ describe('settingsSlice', () => {
         },
         reactivity: { ...REACTIVITY_DEFAULTS },
         coachingPromptConfig: { ...COACHING_PROMPT_DEFAULTS },
+        ttsConfig: { ...TTS_DEFAULTS },
         templates: [mockTemplate],
         isLoading: true,
         isSaving: true,

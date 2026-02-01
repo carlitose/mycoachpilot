@@ -1,4 +1,4 @@
-import type { UserConfigProps, TemplateProps, ReactivityConfigProps, CoachingPromptConfigProps } from '@domain/settings';
+import type { UserConfigProps, TemplateProps, ReactivityConfigProps, CoachingPromptConfigProps, TTSConfigProps } from '@domain/settings';
 import type { Result } from '@domain/shared';
 
 /**
@@ -60,4 +60,14 @@ export interface ConfigRepositoryPort {
    * Save coaching prompt configuration
    */
   saveCoachingPromptConfig(config: CoachingPromptConfigProps): Promise<Result<void, Error>>;
+
+  /**
+   * Get TTS configuration
+   */
+  getTTSConfig(): Promise<Result<TTSConfigProps | null, Error>>;
+
+  /**
+   * Save TTS configuration
+   */
+  saveTTSConfig(config: TTSConfigProps): Promise<Result<void, Error>>;
 }

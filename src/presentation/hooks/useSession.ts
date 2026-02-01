@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import type { SessionModeType, AudioConfigProps } from '@domain/session';
 import { REACTIVITY_DEFAULTS } from '@domain/settings';
@@ -6,6 +6,8 @@ import { REACTIVITY_DEFAULTS } from '@domain/settings';
 import type { SessionHistoryEntry } from '@application/ports';
 
 import { useContainer } from '../context';
+
+import { useSettings } from './useSettings';
 
 export interface UseSessionOptions {
   mode: SessionModeType;
@@ -21,12 +23,22 @@ let currentSessionName: string | undefined;
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useSession() {
-  const { sessionManager, configRepository, sessionRepository, useSessionState, useTranscriptState, useCoachingState } = useContainer();
+  const { sessionManager, configRepository, sessionRepository, audioPlayback, useSessionState, useTranscriptState, useCoachingState } = useContainer();
+  const { ttsEnabled, ttsVolume } = useSettings();
 
   // Get reactive state from ports
   const sessionState = useSessionState();
   const transcriptState = useTranscriptState();
   const coachingState = useCoachingState();
+
+  // Sync TTS settings with audio playback adapter
+  useEffect(() => {
+    audioPlayback.setEnabled(ttsEnabled);
+  }, [audioPlayback, ttsEnabled]);
+
+  useEffect(() => {
+    audioPlayback.setVolume(ttsVolume);
+  }, [audioPlayback, ttsVolume]);
 
   const startSession = useCallback(async (options: UseSessionOptions) => {
     // Store the session name for later persistence (module-level variable)

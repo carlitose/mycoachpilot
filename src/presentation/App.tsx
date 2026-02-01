@@ -21,6 +21,7 @@ import type { ServiceContainer } from '@application/ports';
 import {
   getEventBus,
   getAudioCapture,
+  getAudioPlayback,
   getRealtimeConnection,
   getSessionRepository,
   getConfigRepository,
@@ -46,6 +47,7 @@ export function App(): ReactNode {
     // Infrastructure services
     eventBus: getEventBus(),
     audioCapture: getAudioCapture(),
+    audioPlayback: getAudioPlayback(),
     realtimeConnection: getRealtimeConnection(),
     sessionRepository: getSessionRepository(),
     configRepository: getConfigRepository(),

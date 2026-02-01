@@ -6,7 +6,7 @@ import { REACTIVITY_DEFAULTS } from '@domain/settings';
 import { Result, ok, err, SessionError, DomainEvent } from '@domain/shared';
 import { Message, TranscriptSegment, Speaker, MessageProps, TranscriptSegmentProps, SpeakerProps } from '@domain/transcript';
 
-import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, RealtimeConnectionFactoryPort, RealtimeConfig, RealtimeEvent } from '../ports';
+import type { EventBusPort, AudioCapturePort, AudioPlaybackPort, RealtimeConnectionPort, RealtimeConnectionFactoryPort, RealtimeConfig, RealtimeEvent } from '../ports';
 
 import type { CoachingEngine } from './CoachingEngine';
 import { createSuggestionGeneratorFn } from './CoachingIntegration';
@@ -15,6 +15,7 @@ import { handleRealtimeEvent, float32ToPCM16, resample48to24 } from './SessionEv
 export interface SessionManagerDependencies {
   eventBus: EventBusPort;
   audioCapture: AudioCapturePort;
+  audioPlayback?: AudioPlaybackPort;
   realtimeConnection: RealtimeConnectionPort;
   realtimeConnectionFactory?: RealtimeConnectionFactoryPort;
   coachingEngine?: CoachingEngine;
@@ -195,6 +196,11 @@ export class SessionManager {
     // Subscribe to realtime events
     this._unsubscribers.push(
       this.deps.realtimeConnection.onEvent((event) => {
+        // Handle audio responses for TTS playback
+        if (event.type === 'audio_response' && this.deps.audioPlayback) {
+          this.deps.audioPlayback.queueAudio(event.audio, event.sampleRate);
+        }
+
         handleRealtimeEvent(event, this._state, (segment) => {
           // Publish SegmentReceived event for Redux/UI
           this.deps.eventBus.publish({
@@ -642,6 +648,11 @@ export class SessionManager {
       // Cleanup
       this.deps.audioCapture.stop();
       this.deps.realtimeConnection.disconnect();
+
+      // Stop audio playback
+      if (this.deps.audioPlayback) {
+        this.deps.audioPlayback.stop();
+      }
 
       // Disconnect dual realtime connections if used (mixed audio mode)
       if (this._micRealtime) {

@@ -2,7 +2,7 @@
  * Settings State Port
  * Abstracts settings state access for Clean Architecture compliance
  */
-import type { UserConfigProps, TemplateProps, CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps } from '@domain/settings';
+import type { UserConfigProps, TemplateProps, CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps, TTSConfigProps } from '@domain/settings';
 import type { SessionModeType } from '@domain/shared';
 
 /**
@@ -15,6 +15,7 @@ export interface SettingsStatePort {
   config: UserConfigProps;
   reactivity: ReactivityConfigProps;
   coachingPromptConfig: CoachingPromptConfigProps;
+  ttsConfig: TTSConfigProps;
   templates: TemplateProps[];
   isLoading: boolean;
   isSaving: boolean;
@@ -36,6 +37,8 @@ export interface SettingsStatePort {
   suggestionModel: string;
   realtimeModel: string;
   transcriptionModel: string;
+  ttsEnabled: boolean;
+  ttsVolume: number;
 
   // Actions - imperatively update state
   setConfig(config: UserConfigProps): void;
@@ -63,5 +66,9 @@ export interface SettingsStatePort {
   setTranscriptionModel(value: string): void;
   resetReactivity(): void;
   resetCoachingPrompts(): void;
+  setTTSConfig(config: TTSConfigProps): void;
+  setTTSEnabled(enabled: boolean): void;
+  setTTSVolume(volume: number): void;
+  resetTTSConfig(): void;
   resetSettings(): void;
 }

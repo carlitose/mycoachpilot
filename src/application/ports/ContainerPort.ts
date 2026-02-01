@@ -9,6 +9,7 @@ import type { SessionManager } from '@application/services';
 import type {
   EventBusPort,
   AudioCapturePort,
+  AudioPlaybackPort,
   RealtimeConnectionPort,
   SessionRepositoryPort,
   ConfigRepositoryPort,
@@ -26,6 +27,7 @@ export interface ServiceContainer {
   // Infrastructure services
   eventBus: EventBusPort;
   audioCapture: AudioCapturePort;
+  audioPlayback: AudioPlaybackPort;
   realtimeConnection: RealtimeConnectionPort;
   sessionRepository: SessionRepositoryPort;
   configRepository: ConfigRepositoryPort;

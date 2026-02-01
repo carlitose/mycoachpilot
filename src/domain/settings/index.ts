@@ -12,6 +12,8 @@ export {
   REACTIVITY_DEFAULTS,
   CoachingPromptConfig,
   COACHING_PROMPT_DEFAULTS,
+  TTSConfig,
+  TTS_DEFAULTS,
 } from './valueObjects';
 export type {
   ApiKeyService,
@@ -21,6 +23,7 @@ export type {
   ReactivityConfigProps,
   CoachingPromptConfigProps,
   StyleDescriptions,
+  TTSConfigProps,
 } from './valueObjects';
 
 // Entities

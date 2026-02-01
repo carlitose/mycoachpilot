@@ -5,6 +5,8 @@
 
 export type { EventBusPort } from './EventBusPort';
 
+export type { AudioPlaybackPort } from './AudioPlaybackPort';
+
 export type {
   AudioCapturePort,
   AudioCaptureState,

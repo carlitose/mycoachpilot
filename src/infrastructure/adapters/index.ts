@@ -6,8 +6,8 @@
 // Realtime (OpenAI)
 export { OpenAIRealtimeAdapter, BrowserRealtimeConnectionFactory } from './realtime';
 
-// Audio Capture
-export { AudioCaptureAdapter } from './audio';
+// Audio Capture and Playback
+export { AudioCaptureAdapter, AudioPlaybackAdapter } from './audio';
 
 // Persistence
 export {

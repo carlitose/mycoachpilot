@@ -30,6 +30,9 @@ import {
   selectTemplates,
   selectTheme,
   selectTranscriptionModel,
+  selectTTSConfig,
+  selectTTSEnabled,
+  selectTTSVolume,
   selectVadSilenceDuration,
   selectVadThreshold,
 } from '../selectors/settingsSelectors';
@@ -39,6 +42,7 @@ import {
   resetCoachingPrompts,
   resetReactivity,
   resetSettings,
+  resetTTSConfig,
   setCoachingPromptConfig,
   setCoachingStyle,
   setConfig,
@@ -57,6 +61,9 @@ import {
   setTemplates,
   setTheme,
   setTranscriptionModel,
+  setTTSConfig,
+  setTTSEnabled,
+  setTTSVolume,
   setVadSilenceDuration,
   setVadThreshold,
   updateTemplate,
@@ -95,6 +102,9 @@ export function useReduxSettingsState(): SettingsStatePort {
   const suggestionModel = useSelector((state: RootState) => selectSuggestionModel(state));
   const realtimeModel = useSelector((state: RootState) => selectRealtimeModel(state));
   const transcriptionModel = useSelector((state: RootState) => selectTranscriptionModel(state));
+  const ttsConfig = useSelector((state: RootState) => selectTTSConfig(state));
+  const ttsEnabled = useSelector((state: RootState) => selectTTSEnabled(state));
+  const ttsVolume = useSelector((state: RootState) => selectTTSVolume(state));
 
   // Memoize actions to maintain stable references
   const actions = useMemo(() => ({
@@ -123,6 +133,10 @@ export function useReduxSettingsState(): SettingsStatePort {
     setTranscriptionModel: (val: Parameters<SettingsStatePort['setTranscriptionModel']>[0]) => dispatch(setTranscriptionModel(val)),
     resetReactivity: () => dispatch(resetReactivity()),
     resetCoachingPrompts: () => dispatch(resetCoachingPrompts()),
+    setTTSConfig: (cfg: Parameters<SettingsStatePort['setTTSConfig']>[0]) => dispatch(setTTSConfig(cfg)),
+    setTTSEnabled: (enabled: Parameters<SettingsStatePort['setTTSEnabled']>[0]) => dispatch(setTTSEnabled(enabled)),
+    setTTSVolume: (vol: Parameters<SettingsStatePort['setTTSVolume']>[0]) => dispatch(setTTSVolume(vol)),
+    resetTTSConfig: () => dispatch(resetTTSConfig()),
     resetSettings: () => dispatch(resetSettings()),
   }), [dispatch]);
 
@@ -131,6 +145,7 @@ export function useReduxSettingsState(): SettingsStatePort {
     config,
     reactivity,
     coachingPromptConfig,
+    ttsConfig,
     templates,
     isLoading,
     isSaving,
@@ -152,6 +167,8 @@ export function useReduxSettingsState(): SettingsStatePort {
     suggestionModel,
     realtimeModel,
     transcriptionModel,
+    ttsEnabled,
+    ttsVolume,
     // Actions
     ...actions,
   };

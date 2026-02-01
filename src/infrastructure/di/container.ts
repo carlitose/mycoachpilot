@@ -1,10 +1,11 @@
-import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, RealtimeConnectionFactoryPort, SessionRepositoryPort, ConfigRepositoryPort } from '@application/ports';
+import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, RealtimeConnectionFactoryPort, SessionRepositoryPort, ConfigRepositoryPort, AudioPlaybackPort } from '@application/ports';
 import { SessionManager, CoachingEngine } from '@application/services';
 
 import {
   OpenAIRealtimeAdapter,
   BrowserRealtimeConnectionFactory,
   AudioCaptureAdapter,
+  AudioPlaybackAdapter,
   LocalStorageSessionRepository,
   LocalStorageConfigRepository,
 } from '@infrastructure/adapters';
@@ -17,6 +18,7 @@ import { store, ReduxEventBusAdapter } from '@infrastructure/state';
 
 let eventBus: EventBusPort | null = null;
 let audioCapture: AudioCapturePort | null = null;
+let audioPlayback: AudioPlaybackPort | null = null;
 let realtimeConnection: RealtimeConnectionPort | null = null;
 let realtimeConnectionFactory: RealtimeConnectionFactoryPort | null = null;
 let sessionRepository: SessionRepositoryPort | null = null;
@@ -36,6 +38,13 @@ export function getAudioCapture(): AudioCapturePort {
     audioCapture = new AudioCaptureAdapter();
   }
   return audioCapture;
+}
+
+export function getAudioPlayback(): AudioPlaybackPort {
+  if (!audioPlayback) {
+    audioPlayback = new AudioPlaybackAdapter();
+  }
+  return audioPlayback;
 }
 
 export function getRealtimeConnection(): RealtimeConnectionPort {
@@ -83,6 +92,7 @@ export function getSessionManager(): SessionManager {
     sessionManager = new SessionManager({
       eventBus: getEventBus(),
       audioCapture: getAudioCapture(),
+      audioPlayback: getAudioPlayback(),
       realtimeConnection: getRealtimeConnection(),
       realtimeConnectionFactory: getRealtimeConnectionFactory(),
       coachingEngine: getCoachingEngine(),
@@ -95,6 +105,7 @@ export function getSessionManager(): SessionManager {
 export function resetContainer(): void {
   eventBus = null;
   audioCapture = null;
+  audioPlayback = null;
   realtimeConnection = null;
   realtimeConnectionFactory = null;
   sessionRepository = null;

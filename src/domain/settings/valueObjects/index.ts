@@ -8,3 +8,5 @@ export { ReactivityConfig, REACTIVITY_DEFAULTS } from './ReactivityConfig';
 export type { ReactivityConfigProps } from './ReactivityConfig';
 export { CoachingPromptConfig, COACHING_PROMPT_DEFAULTS } from './CoachingPromptConfig';
 export type { CoachingPromptConfigProps, StyleDescriptions } from './CoachingPromptConfig';
+export { TTSConfig, TTS_DEFAULTS } from './TTSConfig';
+export type { TTSConfigProps } from './TTSConfig';

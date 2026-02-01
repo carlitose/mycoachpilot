@@ -125,3 +125,19 @@ export const selectCoachingPromptConfig = createSelector(
   selectSettings,
   (settings) => settings.coachingPromptConfig,
 );
+
+// TTS Config selectors
+export const selectTTSConfig = createSelector(
+  selectSettings,
+  (settings) => settings.ttsConfig,
+);
+
+export const selectTTSEnabled = createSelector(
+  selectTTSConfig,
+  (ttsConfig) => ttsConfig.enabled,
+);
+
+export const selectTTSVolume = createSelector(
+  selectTTSConfig,
+  (ttsConfig) => ttsConfig.volume,
+);

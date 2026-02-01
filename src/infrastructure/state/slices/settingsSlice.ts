@@ -1,13 +1,14 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import type { SessionModeType } from '@domain/session';
-import type { UserConfigProps, TemplateProps, CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps } from '@domain/settings';
-import { PREDEFINED_TEMPLATES, REACTIVITY_DEFAULTS, COACHING_PROMPT_DEFAULTS } from '@domain/settings';
+import type { UserConfigProps, TemplateProps, CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps, TTSConfigProps } from '@domain/settings';
+import { PREDEFINED_TEMPLATES, REACTIVITY_DEFAULTS, COACHING_PROMPT_DEFAULTS, TTS_DEFAULTS } from '@domain/settings';
 
 export interface SettingsSliceState {
   config: UserConfigProps;
   reactivity: ReactivityConfigProps;
   coachingPromptConfig: CoachingPromptConfigProps;
+  ttsConfig: TTSConfigProps;
   templates: TemplateProps[];
   isLoading: boolean;
   isSaving: boolean;
@@ -28,6 +29,7 @@ const initialState: SettingsSliceState = {
   config: defaultConfig,
   reactivity: { ...REACTIVITY_DEFAULTS },
   coachingPromptConfig: { ...COACHING_PROMPT_DEFAULTS },
+  ttsConfig: { ...TTS_DEFAULTS },
   templates: PREDEFINED_TEMPLATES,
   isLoading: false,
   isSaving: false,
@@ -144,6 +146,23 @@ export const settingsSlice = createSlice({
       state.coachingPromptConfig = { ...COACHING_PROMPT_DEFAULTS };
     },
 
+    // TTS Config reducers
+    setTTSConfig: (state, action: PayloadAction<TTSConfigProps>) => {
+      state.ttsConfig = action.payload;
+    },
+
+    setTTSEnabled: (state, action: PayloadAction<boolean>) => {
+      state.ttsConfig.enabled = action.payload;
+    },
+
+    setTTSVolume: (state, action: PayloadAction<number>) => {
+      state.ttsConfig.volume = Math.max(0, Math.min(1, action.payload));
+    },
+
+    resetTTSConfig: (state) => {
+      state.ttsConfig = { ...TTS_DEFAULTS };
+    },
+
     resetSettings: () => initialState,
   },
 });
@@ -174,6 +193,10 @@ export const {
   resetReactivity,
   setCoachingPromptConfig,
   resetCoachingPrompts,
+  setTTSConfig,
+  setTTSEnabled,
+  setTTSVolume,
+  resetTTSConfig,
   resetSettings,
 } = settingsSlice.actions;
 

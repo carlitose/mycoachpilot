@@ -10,6 +10,7 @@
 export {
   getEventBus,
   getAudioCapture,
+  getAudioPlayback,
   getRealtimeConnection,
   getSessionRepository,
   getConfigRepository,

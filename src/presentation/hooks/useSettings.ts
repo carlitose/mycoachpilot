@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import type { CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps } from '@domain/settings';
+import type { CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps, TTSConfigProps } from '@domain/settings';
 import type { SessionModeType } from '@domain/shared';
 
 import { useContainer } from '../context';
@@ -53,6 +53,15 @@ export function useSettings() {
       const loadedPromptConfig = promptResult.unwrap();
       if (loadedPromptConfig !== null) {
         settingsState.setCoachingPromptConfig(loadedPromptConfig);
+      }
+    }
+
+    // Load TTS config
+    const ttsResult = await configRepository.getTTSConfig();
+    if (ttsResult.isOk()) {
+      const loadedTTSConfig = ttsResult.unwrap();
+      if (loadedTTSConfig !== null) {
+        settingsState.setTTSConfig(loadedTTSConfig);
       }
     }
 
@@ -149,6 +158,29 @@ export function useSettings() {
     await configRepository.saveCoachingPromptConfig({ ...COACHING_PROMPT_DEFAULTS });
   }, [settingsState, configRepository]);
 
+  // TTS Config save functions
+  const saveTTSConfig = useCallback(async (config: TTSConfigProps) => {
+    settingsState.setTTSConfig(config);
+    await configRepository.saveTTSConfig(config);
+  }, [settingsState, configRepository]);
+
+  const saveTTSEnabled = useCallback(async (enabled: boolean) => {
+    settingsState.setTTSEnabled(enabled);
+    await configRepository.saveTTSConfig({ ...settingsState.ttsConfig, enabled });
+  }, [settingsState, configRepository]);
+
+  const saveTTSVolume = useCallback(async (volume: number) => {
+    settingsState.setTTSVolume(volume);
+    await configRepository.saveTTSConfig({ ...settingsState.ttsConfig, volume });
+  }, [settingsState, configRepository]);
+
+  const resetTTSToDefaults = useCallback(async () => {
+    settingsState.resetTTSConfig();
+    // After reset, TTS config will have defaults - we need to save them
+    const { TTS_DEFAULTS } = await import('@domain/settings');
+    await configRepository.saveTTSConfig({ ...TTS_DEFAULTS });
+  }, [settingsState, configRepository]);
+
   return {
     // State (reactive values from port)
     config: settingsState.config,
@@ -175,6 +207,11 @@ export function useSettings() {
     realtimeModel: settingsState.realtimeModel,
     transcriptionModel: settingsState.transcriptionModel,
 
+    // TTS state
+    ttsConfig: settingsState.ttsConfig,
+    ttsEnabled: settingsState.ttsEnabled,
+    ttsVolume: settingsState.ttsVolume,
+
     // Actions
     loadSettings,
     saveOpenaiKey,
@@ -198,5 +235,11 @@ export function useSettings() {
     // Coaching Prompt Config actions
     saveCoachingPromptConfig,
     resetCoachingPromptsToDefaults,
+
+    // TTS Config actions
+    saveTTSConfig,
+    saveTTSEnabled,
+    saveTTSVolume,
+    resetTTSToDefaults,
   };
 }
