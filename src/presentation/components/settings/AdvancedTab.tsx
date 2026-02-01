@@ -47,7 +47,7 @@ export function AdvancedTab({
   onReset,
 }: AdvancedTabProps): React.JSX.Element {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-h-[400px] overflow-y-auto">
       {/* Voice Detection Section */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
