@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import type { SessionModeType } from '@domain/session';
-import type { UserConfigProps, TemplateProps, CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps, TTSConfigProps } from '@domain/settings';
+import type { UserConfigProps, TemplateProps, CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps, TTSConfigProps, TTSVoice } from '@domain/settings';
 import { PREDEFINED_TEMPLATES, REACTIVITY_DEFAULTS, COACHING_PROMPT_DEFAULTS, TTS_DEFAULTS } from '@domain/settings';
 
 export interface SettingsSliceState {
@@ -159,6 +159,23 @@ export const settingsSlice = createSlice({
       state.ttsConfig.volume = Math.max(0, Math.min(1, action.payload));
     },
 
+    // Coach TTS Config reducers
+    setCoachTTSEnabled: (state, action: PayloadAction<boolean>) => {
+      state.ttsConfig.coachTTSEnabled = action.payload;
+    },
+
+    setCoachTTSVoice: (state, action: PayloadAction<TTSVoice>) => {
+      state.ttsConfig.coachTTSVoice = action.payload;
+    },
+
+    setCoachTTSSpeed: (state, action: PayloadAction<number>) => {
+      state.ttsConfig.coachTTSSpeed = Math.max(0.25, Math.min(4.0, action.payload));
+    },
+
+    setCoachTTSVolume: (state, action: PayloadAction<number>) => {
+      state.ttsConfig.coachTTSVolume = Math.max(0, Math.min(1, action.payload));
+    },
+
     resetTTSConfig: (state) => {
       state.ttsConfig = { ...TTS_DEFAULTS };
     },
@@ -196,6 +213,10 @@ export const {
   setTTSConfig,
   setTTSEnabled,
   setTTSVolume,
+  setCoachTTSEnabled,
+  setCoachTTSVoice,
+  setCoachTTSSpeed,
+  setCoachTTSVolume,
   resetTTSConfig,
   resetSettings,
 } = settingsSlice.actions;

@@ -1,6 +1,7 @@
 import { Globe, Key, Mic2, Sparkles, Volume2 } from 'lucide-react';
 
-import type { CoachingPromptConfigProps } from '@domain/settings';
+import type { CoachingPromptConfigProps, TTSVoice } from '@domain/settings';
+import { TTS_VOICES } from '@domain/settings';
 
 import { Button } from '@presentation/components/ui/button';
 import {
@@ -18,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@presentation/components/ui/select';
+import { Slider } from '@presentation/components/ui/slider';
 import { Switch } from '@presentation/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@presentation/components/ui/tabs';
 import { useSettings } from '@presentation/hooks';
@@ -58,6 +60,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
     // TTS Config
     ttsEnabled,
     saveTTSEnabled,
+    // Coach TTS Config
+    coachTTSEnabled,
+    coachTTSVoice,
+    coachTTSSpeed,
+    saveCoachTTSEnabled,
+    saveCoachTTSVoice,
+    saveCoachTTSSpeed,
   } = useSettings();
 
   const handleOpenaiKeyChange = (value: string): void => {
@@ -192,6 +201,71 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
                   <SelectItem value="high">High - Continuous coaching</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-border">
+              <h4 className="text-sm font-medium mb-4">Voice Settings</h4>
+
+              <div className="flex items-center justify-between rounded-lg border border-border p-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <Volume2 className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Read Suggestions Aloud</p>
+                    <p className="text-xs text-muted-foreground">
+                      Play AI coach suggestions using text-to-speech
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={coachTTSEnabled}
+                  onCheckedChange={(checked) => { void saveCoachTTSEnabled(checked); }}
+                />
+              </div>
+
+              {coachTTSEnabled && (
+                <>
+                  <div className="space-y-2 mb-4">
+                    <Label className="flex items-center gap-2">Voice</Label>
+                    <Select
+                      value={coachTTSVoice}
+                      onValueChange={(value) => { void saveCoachTTSVoice(value as TTSVoice); }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TTS_VOICES.map((voice) => (
+                          <SelectItem key={voice} value={voice}>
+                            {voice.charAt(0).toUpperCase() + voice.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Recommended: Coral (warm), Nova (professional), Sage (authoritative)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2">Speed</Label>
+                      <span className="text-sm text-muted-foreground">{coachTTSSpeed.toFixed(1)}x</span>
+                    </div>
+                    <Slider
+                      value={coachTTSSpeed}
+                      min={0.5}
+                      max={2.0}
+                      step={0.1}
+                      onValueChange={(value) => { void saveCoachTTSSpeed(value); }}
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Slow (0.5x)</span>
+                      <span>Normal (1.0x)</span>
+                      <span>Fast (2.0x)</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </TabsContent>
 

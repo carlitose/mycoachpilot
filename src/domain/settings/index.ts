@@ -14,6 +14,7 @@ export {
   COACHING_PROMPT_DEFAULTS,
   TTSConfig,
   TTS_DEFAULTS,
+  TTS_VOICES,
 } from './valueObjects';
 export type {
   ApiKeyService,
@@ -24,6 +25,7 @@ export type {
   CoachingPromptConfigProps,
   StyleDescriptions,
   TTSConfigProps,
+  TTSVoice,
 } from './valueObjects';
 
 // Entities

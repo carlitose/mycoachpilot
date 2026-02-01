@@ -141,3 +141,24 @@ export const selectTTSVolume = createSelector(
   selectTTSConfig,
   (ttsConfig) => ttsConfig.volume,
 );
+
+// Coach TTS Config selectors
+export const selectCoachTTSEnabled = createSelector(
+  selectTTSConfig,
+  (ttsConfig) => ttsConfig.coachTTSEnabled,
+);
+
+export const selectCoachTTSVoice = createSelector(
+  selectTTSConfig,
+  (ttsConfig) => ttsConfig.coachTTSVoice,
+);
+
+export const selectCoachTTSSpeed = createSelector(
+  selectTTSConfig,
+  (ttsConfig) => ttsConfig.coachTTSSpeed,
+);
+
+export const selectCoachTTSVolume = createSelector(
+  selectTTSConfig,
+  (ttsConfig) => ttsConfig.coachTTSVolume,
+);

@@ -1,4 +1,4 @@
-import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, RealtimeConnectionFactoryPort, SessionRepositoryPort, ConfigRepositoryPort, AudioPlaybackPort } from '@application/ports';
+import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, RealtimeConnectionFactoryPort, SessionRepositoryPort, ConfigRepositoryPort, AudioPlaybackPort, TTSPort } from '@application/ports';
 import { SessionManager, CoachingEngine } from '@application/services';
 
 import {
@@ -6,6 +6,7 @@ import {
   BrowserRealtimeConnectionFactory,
   AudioCaptureAdapter,
   AudioPlaybackAdapter,
+  OpenAITTSAdapter,
   LocalStorageSessionRepository,
   LocalStorageConfigRepository,
 } from '@infrastructure/adapters';
@@ -25,6 +26,7 @@ let sessionRepository: SessionRepositoryPort | null = null;
 let configRepository: ConfigRepositoryPort | null = null;
 let sessionManager: SessionManager | null = null;
 let coachingEngine: CoachingEngine | null = null;
+let tts: TTSPort | null = null;
 
 export function getEventBus(): EventBusPort {
   if (!eventBus) {
@@ -45,6 +47,13 @@ export function getAudioPlayback(): AudioPlaybackPort {
     audioPlayback = new AudioPlaybackAdapter();
   }
   return audioPlayback;
+}
+
+export function getTTS(): TTSPort {
+  if (!tts) {
+    tts = new OpenAITTSAdapter();
+  }
+  return tts;
 }
 
 export function getRealtimeConnection(): RealtimeConnectionPort {
@@ -112,4 +121,5 @@ export function resetContainer(): void {
   configRepository = null;
   sessionManager = null;
   coachingEngine = null;
+  tts = null;
 }

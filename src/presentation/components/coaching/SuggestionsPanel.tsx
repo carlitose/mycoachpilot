@@ -1,11 +1,12 @@
-import { Lightbulb, MessageSquare, HelpCircle, Shield, Target, X, Sparkles, Handshake, Search, FileText } from 'lucide-react';
+import { Lightbulb, MessageSquare, HelpCircle, Shield, Target, X, Sparkles, Handshake, Search, FileText, VolumeX } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import type { SuggestionTypeValue } from '@domain/coaching';
 
 import { Button } from '@presentation/components/ui/button';
 import { ScrollArea } from '@presentation/components/ui/scroll-area';
-import { useCoaching, useSession } from '@presentation/hooks';
+import { useContainer } from '@presentation/context';
+import { useCoaching, useSession, useSuggestionTTS } from '@presentation/hooks';
 import { cn } from '@presentation/lib/utils';
 
 const suggestionIcons: Record<SuggestionTypeValue, LucideIcon> = {
@@ -47,6 +48,8 @@ const suggestionLabels: Record<SuggestionTypeValue, string> = {
 export function SuggestionsPanel(): React.JSX.Element {
   const { activeSuggestions, dismissSuggestion } = useCoaching();
   const { isActive, isPaused } = useSession();
+  const { tts } = useContainer();
+  const { isPlaying, stop } = useSuggestionTTS({ ttsAdapter: tts });
 
   const sessionStatus = isActive ? (isPaused ? 'paused' : 'recording') : 'idle';
 
@@ -60,11 +63,24 @@ export function SuggestionsPanel(): React.JSX.Element {
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
         <Sparkles className="h-5 w-5 text-primary" />
         <h2 className="font-semibold text-foreground">AI Coach</h2>
-        {activeSuggestions.length > 0 && (
-          <span className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-            {activeSuggestions.length}
-          </span>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {isPlaying && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={stop}
+              className="h-7 px-2 text-muted-foreground hover:text-foreground"
+            >
+              <VolumeX className="h-4 w-4 mr-1" />
+              Stop
+            </Button>
+          )}
+          {activeSuggestions.length > 0 && (
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+              {activeSuggestions.length}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-hidden">

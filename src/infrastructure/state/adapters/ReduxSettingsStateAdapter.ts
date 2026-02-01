@@ -33,6 +33,10 @@ import {
   selectTTSConfig,
   selectTTSEnabled,
   selectTTSVolume,
+  selectCoachTTSEnabled,
+  selectCoachTTSVoice,
+  selectCoachTTSSpeed,
+  selectCoachTTSVolume,
   selectVadSilenceDuration,
   selectVadThreshold,
 } from '../selectors/settingsSelectors';
@@ -64,6 +68,10 @@ import {
   setTTSConfig,
   setTTSEnabled,
   setTTSVolume,
+  setCoachTTSEnabled,
+  setCoachTTSVoice,
+  setCoachTTSSpeed,
+  setCoachTTSVolume,
   setVadSilenceDuration,
   setVadThreshold,
   updateTemplate,
@@ -105,6 +113,10 @@ export function useReduxSettingsState(): SettingsStatePort {
   const ttsConfig = useSelector((state: RootState) => selectTTSConfig(state));
   const ttsEnabled = useSelector((state: RootState) => selectTTSEnabled(state));
   const ttsVolume = useSelector((state: RootState) => selectTTSVolume(state));
+  const coachTTSEnabled = useSelector((state: RootState) => selectCoachTTSEnabled(state));
+  const coachTTSVoice = useSelector((state: RootState) => selectCoachTTSVoice(state));
+  const coachTTSSpeed = useSelector((state: RootState) => selectCoachTTSSpeed(state));
+  const coachTTSVolume = useSelector((state: RootState) => selectCoachTTSVolume(state));
 
   // Memoize actions to maintain stable references
   const actions = useMemo(() => ({
@@ -136,6 +148,10 @@ export function useReduxSettingsState(): SettingsStatePort {
     setTTSConfig: (cfg: Parameters<SettingsStatePort['setTTSConfig']>[0]) => dispatch(setTTSConfig(cfg)),
     setTTSEnabled: (enabled: Parameters<SettingsStatePort['setTTSEnabled']>[0]) => dispatch(setTTSEnabled(enabled)),
     setTTSVolume: (vol: Parameters<SettingsStatePort['setTTSVolume']>[0]) => dispatch(setTTSVolume(vol)),
+    setCoachTTSEnabled: (enabled: Parameters<SettingsStatePort['setCoachTTSEnabled']>[0]) => dispatch(setCoachTTSEnabled(enabled)),
+    setCoachTTSVoice: (voice: Parameters<SettingsStatePort['setCoachTTSVoice']>[0]) => dispatch(setCoachTTSVoice(voice)),
+    setCoachTTSSpeed: (speed: Parameters<SettingsStatePort['setCoachTTSSpeed']>[0]) => dispatch(setCoachTTSSpeed(speed)),
+    setCoachTTSVolume: (vol: Parameters<SettingsStatePort['setCoachTTSVolume']>[0]) => dispatch(setCoachTTSVolume(vol)),
     resetTTSConfig: () => dispatch(resetTTSConfig()),
     resetSettings: () => dispatch(resetSettings()),
   }), [dispatch]);
@@ -169,6 +185,10 @@ export function useReduxSettingsState(): SettingsStatePort {
     transcriptionModel,
     ttsEnabled,
     ttsVolume,
+    coachTTSEnabled,
+    coachTTSVoice,
+    coachTTSSpeed,
+    coachTTSVolume,
     // Actions
     ...actions,
   };

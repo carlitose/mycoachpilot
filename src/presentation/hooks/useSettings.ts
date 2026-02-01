@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import type { CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps, TTSConfigProps } from '@domain/settings';
+import type { CoachingStyleType, ReactivityConfigProps, CoachingPromptConfigProps, TTSConfigProps, TTSVoice } from '@domain/settings';
 import type { SessionModeType } from '@domain/shared';
 
 import { useContainer } from '../context';
@@ -181,6 +181,27 @@ export function useSettings() {
     await configRepository.saveTTSConfig({ ...TTS_DEFAULTS });
   }, [settingsState, configRepository]);
 
+  // Coach TTS Config save functions
+  const saveCoachTTSEnabled = useCallback(async (enabled: boolean) => {
+    settingsState.setCoachTTSEnabled(enabled);
+    await configRepository.saveTTSConfig({ ...settingsState.ttsConfig, coachTTSEnabled: enabled });
+  }, [settingsState, configRepository]);
+
+  const saveCoachTTSVoice = useCallback(async (voice: TTSVoice) => {
+    settingsState.setCoachTTSVoice(voice);
+    await configRepository.saveTTSConfig({ ...settingsState.ttsConfig, coachTTSVoice: voice });
+  }, [settingsState, configRepository]);
+
+  const saveCoachTTSSpeed = useCallback(async (speed: number) => {
+    settingsState.setCoachTTSSpeed(speed);
+    await configRepository.saveTTSConfig({ ...settingsState.ttsConfig, coachTTSSpeed: speed });
+  }, [settingsState, configRepository]);
+
+  const saveCoachTTSVolume = useCallback(async (volume: number) => {
+    settingsState.setCoachTTSVolume(volume);
+    await configRepository.saveTTSConfig({ ...settingsState.ttsConfig, coachTTSVolume: volume });
+  }, [settingsState, configRepository]);
+
   return {
     // State (reactive values from port)
     config: settingsState.config,
@@ -211,6 +232,10 @@ export function useSettings() {
     ttsConfig: settingsState.ttsConfig,
     ttsEnabled: settingsState.ttsEnabled,
     ttsVolume: settingsState.ttsVolume,
+    coachTTSEnabled: settingsState.coachTTSEnabled,
+    coachTTSVoice: settingsState.coachTTSVoice,
+    coachTTSSpeed: settingsState.coachTTSSpeed,
+    coachTTSVolume: settingsState.coachTTSVolume,
 
     // Actions
     loadSettings,
@@ -241,5 +266,11 @@ export function useSettings() {
     saveTTSEnabled,
     saveTTSVolume,
     resetTTSToDefaults,
+
+    // Coach TTS Config actions
+    saveCoachTTSEnabled,
+    saveCoachTTSVoice,
+    saveCoachTTSSpeed,
+    saveCoachTTSVolume,
   };
 }

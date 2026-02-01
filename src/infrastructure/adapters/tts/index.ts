@@ -1,0 +1,1 @@
+export { OpenAITTSAdapter } from './OpenAITTSAdapter';

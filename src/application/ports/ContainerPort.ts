@@ -13,6 +13,7 @@ import type {
   RealtimeConnectionPort,
   SessionRepositoryPort,
   ConfigRepositoryPort,
+  TTSPort,
   SessionStatePort,
   TranscriptStatePort,
   CoachingStatePort,
@@ -32,6 +33,7 @@ export interface ServiceContainer {
   sessionRepository: SessionRepositoryPort;
   configRepository: ConfigRepositoryPort;
   sessionManager: SessionManager;
+  tts: TTSPort;
 
   // State hooks - call these to get reactive state
   // These are React hooks that return port implementations

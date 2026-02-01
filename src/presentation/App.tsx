@@ -22,6 +22,7 @@ import {
   getEventBus,
   getAudioCapture,
   getAudioPlayback,
+  getTTS,
   getRealtimeConnection,
   getSessionRepository,
   getConfigRepository,
@@ -52,6 +53,7 @@ export function App(): ReactNode {
     sessionRepository: getSessionRepository(),
     configRepository: getConfigRepository(),
     sessionManager: getSessionManager(),
+    tts: getTTS(),
 
     // State hooks - pass the hook functions directly
     useSessionState: useReduxSessionState,

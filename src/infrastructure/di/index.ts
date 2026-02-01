@@ -11,6 +11,7 @@ export {
   getEventBus,
   getAudioCapture,
   getAudioPlayback,
+  getTTS,
   getRealtimeConnection,
   getSessionRepository,
   getConfigRepository,

@@ -8,6 +8,13 @@ export type { EventBusPort } from './EventBusPort';
 export type { AudioPlaybackPort } from './AudioPlaybackPort';
 
 export type {
+  TTSPort,
+  TTSError,
+  TTSErrorCode,
+  SpeakOptions,
+} from './TTSPort';
+
+export type {
   AudioCapturePort,
   AudioCaptureState,
   AudioSourceType,

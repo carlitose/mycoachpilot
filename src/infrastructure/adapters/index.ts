@@ -9,6 +9,9 @@ export { OpenAIRealtimeAdapter, BrowserRealtimeConnectionFactory } from './realt
 // Audio Capture and Playback
 export { AudioCaptureAdapter, AudioPlaybackAdapter } from './audio';
 
+// TTS (Text-to-Speech)
+export { OpenAITTSAdapter } from './tts';
+
 // Persistence
 export {
   LocalStorageSessionRepository,

@@ -9,3 +9,4 @@ export { useTranscript } from './useTranscript';
 export { useSettings } from './useSettings';
 export { useCoaching } from './useCoaching';
 export { useSessionHistory } from './useSessionHistory';
+export { useSuggestionTTS } from './useSuggestionTTS';
