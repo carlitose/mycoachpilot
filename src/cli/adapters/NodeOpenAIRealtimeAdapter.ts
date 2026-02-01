@@ -172,7 +172,7 @@ export class NodeOpenAIRealtimeAdapter implements RealtimeConnectionPort {
       modalities: ['text', 'audio'],
       input_audio_format: 'pcm16',
       output_audio_format: 'pcm16',
-      input_audio_transcription: { model: 'whisper-1' },
+      input_audio_transcription: { model: 'gpt-4o-transcribe' },
     };
 
     if (this.config.systemPrompt) sessionConfig.instructions = this.config.systemPrompt;
