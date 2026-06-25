@@ -1,17 +1,19 @@
 import type { AudioCapturePort } from '../application/ports/AudioCapturePort';
+import type { RealtimeConnectionPort } from '../application/ports/RealtimeConnectionPort';
 import { CoachingEngine } from '../application/services/CoachingEngine';
 import { SessionManager } from '../application/services/SessionManager';
 import { REACTIVITY_DEFAULTS } from '../domain/settings';
 import type { ReactivityConfigProps } from '../domain/settings';
+import { OpenAIRealtimeProtocol } from '../infrastructure/adapters/realtime/OpenAIRealtimeProtocol';
 
 import {
   InMemoryEventBusAdapter,
   InMemorySessionRepository,
   InMemoryConfigRepository,
   FileAudioCaptureAdapter,
-  NodeOpenAIRealtimeAdapter,
   NodeMicrophoneAdapter,
 } from './adapters';
+import { NodeWsTransportFactory } from './adapters/NodeWsTransport';
 
 export type AudioSourceOption = 'file' | 'microphone' | 'system' | 'mixed';
 
@@ -52,7 +54,7 @@ export interface CLIContainerOptions {
 export interface CLIContainer {
   eventBus: InMemoryEventBusAdapter;
   audioCapture: AudioCapturePort;
-  realtimeConnection: NodeOpenAIRealtimeAdapter;
+  realtimeConnection: RealtimeConnectionPort;
   sessionRepository: InMemorySessionRepository;
   configRepository: InMemoryConfigRepository;
   coachingEngine: CoachingEngine;
@@ -82,7 +84,7 @@ function createAudioCapture(options: CLIContainerOptions): AudioCapturePort {
 export function createCLIContainer(options: CLIContainerOptions = {}): CLIContainer {
   const eventBus = new InMemoryEventBusAdapter();
   const audioCapture = createAudioCapture(options);
-  const realtimeConnection = new NodeOpenAIRealtimeAdapter();
+  const realtimeConnection = new OpenAIRealtimeProtocol(new NodeWsTransportFactory());
   const sessionRepository = new InMemorySessionRepository();
   const configRepository = new InMemoryConfigRepository();
 
