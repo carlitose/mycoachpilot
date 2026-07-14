@@ -2,7 +2,6 @@ import type { EventBusPort, AudioCapturePort, RealtimeConnectionPort, RealtimeCo
 import { SessionManager, CoachingEngine } from '@application/services';
 
 import {
-  OpenAIRealtimeAdapter,
   BrowserRealtimeConnectionFactory,
   AudioCaptureAdapter,
   AudioPlaybackAdapter,
@@ -58,7 +57,7 @@ export function getTTS(): TTSPort {
 
 export function getRealtimeConnection(): RealtimeConnectionPort {
   if (!realtimeConnection) {
-    realtimeConnection = new OpenAIRealtimeAdapter();
+    realtimeConnection = getRealtimeConnectionFactory().create();
   }
   return realtimeConnection;
 }

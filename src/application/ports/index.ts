@@ -41,6 +41,14 @@ export type {
 export type { RealtimeConnectionFactoryPort } from './RealtimeConnectionFactoryPort';
 
 export type {
+  TransportState,
+  TransportCloseInfo,
+  RealtimeTransportHandlers,
+  RealtimeTransport,
+  RealtimeTransportFactory,
+} from './RealtimeTransportPort';
+
+export type {
   SessionRepositoryPort,
   SessionHistoryEntry,
 } from './SessionRepositoryPort';

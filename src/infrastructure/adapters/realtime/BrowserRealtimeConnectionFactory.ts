@@ -3,14 +3,16 @@ import type {
   RealtimeConnectionPort,
 } from '@application/ports';
 
-import { OpenAIRealtimeAdapter } from './OpenAIRealtimeAdapter';
+import { BrowserWebSocketTransportFactory } from './BrowserWebSocketTransport';
+import { OpenAIRealtimeProtocol } from './OpenAIRealtimeProtocol';
 
 /**
- * Browser-based factory for creating RealtimeConnection instances
- * Creates new OpenAIRealtimeAdapter instances for dual-connection scenarios
+ * Browser-based factory for creating RealtimeConnection instances.
+ * Uses the transport-agnostic OpenAIRealtimeProtocol wired with the
+ * native WebSocket transport (subprotocol auth).
  */
 export class BrowserRealtimeConnectionFactory implements RealtimeConnectionFactoryPort {
   create(): RealtimeConnectionPort {
-    return new OpenAIRealtimeAdapter();
+    return new OpenAIRealtimeProtocol(new BrowserWebSocketTransportFactory());
   }
 }

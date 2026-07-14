@@ -3,8 +3,9 @@
  * Implementations of application ports for external services
  */
 
-// Realtime (OpenAI)
-export { OpenAIRealtimeAdapter, BrowserRealtimeConnectionFactory } from './realtime';
+// Realtime (OpenAI) — RFC-1: BrowserRealtimeConnectionFactory is the sole public entry point.
+// OpenAIRealtimeProtocol and BrowserWebSocketTransportFactory are internal details.
+export { BrowserRealtimeConnectionFactory } from './realtime';
 
 // Audio Capture and Playback
 export { AudioCaptureAdapter, AudioPlaybackAdapter } from './audio';

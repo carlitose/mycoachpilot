@@ -4,4 +4,4 @@ export { InMemoryConfigRepository } from './InMemoryConfigRepository';
 export { FileAudioCaptureAdapter } from './FileAudioCaptureAdapter';
 export { NodeMicrophoneAdapter } from './NodeMicrophoneAdapter';
 export type { AudioDeviceInfo, NodeMicrophoneAdapterOptions } from './NodeMicrophoneAdapter';
-export { NodeOpenAIRealtimeAdapter } from './NodeOpenAIRealtimeAdapter';
+export { NodeWsTransportFactory } from './NodeWsTransport';
